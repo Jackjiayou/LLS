@@ -64,10 +64,48 @@
 							avatarUrl: userProfileRes.userInfo.avatarUrl
 						})
 						
-						// 跳转到首页
-						uni.reLaunch({
-							url: '/pages/index/index'
-						})
+						// 使用reLaunch进行跳转
+						try {
+							// 先尝试关闭当前页面
+							uni.hideLoading();
+							
+							// 使用reLaunch跳转
+							uni.reLaunch({
+								url: '/pages/index/index',
+								success: () => {
+									console.log('跳转成功');
+								},
+								fail: (err) => {
+									console.error('reLaunch失败:', err);
+									// 如果reLaunch失败，尝试使用redirectTo
+									uni.redirectTo({
+										url: '/pages/index/index',
+										fail: (redirectErr) => {
+											console.error('redirectTo也失败了:', redirectErr);
+											// 最后尝试使用navigateTo
+											uni.navigateTo({
+												url: '/pages/index/index',
+												fail: (navErr) => {
+													console.error('所有跳转方式都失败了:', navErr);
+													uni.showToast({
+														title: '页面跳转失败，请重试',
+														icon: 'none',
+														duration: 2000
+													});
+												}
+											});
+										}
+									});
+								}
+							});
+						} catch (error) {
+							console.error('跳转过程出错:', error);
+							uni.showToast({
+								title: '页面跳转失败，请重试',
+								icon: 'none',
+								duration: 2000
+							});
+						}
 					} else {
 						console.error('登录失败：', response)
 						uni.showToast({
@@ -93,9 +131,10 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		height: 100vh;
+		min-height: 100vh;
 		padding: 40rpx;
-		background-color: #f8f8f8;
+		background-color: #ffffff;
+		box-sizing: border-box;
 	}
 	
 	.logo {

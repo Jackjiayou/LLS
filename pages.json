@@ -17,12 +17,26 @@
 			"style": {
 				"navigationBarTitleText": "场景详情"
 			}
-		}
+		},
+        {
+        	"path": "pages/chat/chat",
+        	"style": {
+        		"navigationBarTitleText": "练习聊天"
+        	}
+        },
+        {
+        	"path": "pages/report/report",
+        	"style": {
+        		"navigationBarTitleText": "练习报告"
+        	}
+        }
+        
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "培训",
 		"navigationBarBackgroundColor": "#F8F8F8",
+        
 		"backgroundColor": "#F8F8F8"
 	},
 	"uniIdRouter": {}

@@ -102,31 +102,38 @@
 			}
 		},
 		onLoad() {
+			console.log('Index page onLoad.');
 			// 检查登录状态
 			this.checkLoginStatus();
 		},
 		onShow() {
+			console.log('Index page onShow.');
 			// 每次页面显示时都检查登录状态
 			this.checkLoginStatus();
 		},
 		methods: {
 			async checkLoginStatus() {
+				console.log('Checking login status...');
 				const token = uni.getStorageSync('token');
-				const tokenExpires = uni.getStorageSync('token_expires');
+				const tokenExpires = uni.getStorageSync('token_expire_time'); // 注意这里是 token_expire_time
 				
 				if (!token || !tokenExpires) {
+					console.log('Token or expire time missing, redirecting to login.');
 					// 未登录，跳转到登录页
 					uni.redirectTo({
-						url: '/pages/login/login'
+						url: '/pages/login/login',
+						success: () => console.log('Redirected to login successfully.'),
+						fail: (e) => console.error('Failed to redirect to login:', e)
 					});
 					return;
 				}
 				
 				// 检查token是否过期
-				const now = new Date().getTime();
-				const expires = new Date(tokenExpires).getTime();
+				const now = Date.now();
+				const expireTime = Number(tokenExpires);
 				
-				if (now >= expires) {
+				if (now >= expireTime) {
+					console.log('Token expired, attempting refresh...');
 					// token过期，尝试刷新
 					try {
 						const res = await uni.request({
@@ -138,25 +145,32 @@
 						});
 						
 						if (res.statusCode === 200) {
+							console.log('Token refreshed successfully.');
 							// 更新token
 							uni.setStorageSync('token', res.data.access_token);
-							uni.setStorageSync('token_expires', res.data.expires_at);
+							uni.setStorageSync('token_expire_time', Date.now() + (res.data.expires_in || 7200) * 1000); // 确保更新过期时间
 						} else {
+							console.error('Token refresh failed:', res);
 							// 刷新失败，跳转到登录页
 							uni.redirectTo({
-								url: '/pages/login/login'
+								url: '/pages/login/login',
+								success: () => console.log('Redirected to login after refresh failure.'),
+								fail: (e) => console.error('Failed to redirect to login after refresh failure:', e)
 							});
 							return;
 						}
 					} catch (error) {
-						console.error('Token refresh error:', error);
+						console.error('Token refresh caught error:', error);
 						uni.redirectTo({
-							url: '/pages/login/login'
+							url: '/pages/login/login',
+							success: () => console.log('Redirected to login after refresh error.'),
+							fail: (e) => console.error('Failed to redirect to login after refresh error:', e)
 						});
 						return;
 					}
 				}
 				
+				console.log('Login status good, getting user info and initializing scenes.');
 				// 获取用户信息
 				this.getUserInfo();
 				// 初始化图片路径
@@ -166,6 +180,7 @@
 				this.scenes[3].icon = this.apiBaseUrl + '/uploads/static/scene4.png';
 			},
 			async getUserInfo() {
+				console.log('Fetching user info...');
 				try {
 					const token = uni.getStorageSync('token');
 					const res = await uni.request({
@@ -177,16 +192,20 @@
 					});
 					
 					if (res.statusCode === 200) {
+						console.log('User info fetched successfully:', res.data);
 						this.userInfo = {
 							avatar: res.data.avatar_url || this.apiBaseUrl + '/uploads/static/user-avatar.png',
 							name: res.data.nickname || '未设置昵称'
 						};
+					} else {
+						console.error('Failed to fetch user info:', res);
 					}
 				} catch (error) {
-					console.error('Get user info error:', error);
+					console.error('Get user info caught error:', error);
 				}
 			},
 			getScenes() {
+				console.log('Fetching scenes (using mock data).');
 				// 从服务器获取场景数据
 				// 这里使用模拟数据
 				// uni.request({
