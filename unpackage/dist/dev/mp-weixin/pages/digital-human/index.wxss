@@ -1,0 +1,80 @@
+
+.container {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	background: #f5f5f5;
+}
+.video-container {
+	width: 100%;
+	height: 0;
+	padding-bottom: 133.33%; /* 4:3 比例的反转，即 3:4 */
+	background: #000;
+	position: relative;
+}
+.video-player {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+.chat-container {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	background: #fff;
+}
+.chat-list {
+	flex: 1;
+	padding: 20rpx;
+}
+.message-item {
+	margin-bottom: 20rpx;
+	display: flex;
+}
+.message-item.user {
+	justify-content: flex-end;
+}
+.message-content {
+	max-width: 70%;
+	padding: 20rpx;
+	border-radius: 10rpx;
+	font-size: 28rpx;
+	word-break: break-all;
+}
+.user .message-content {
+	background: #1AAD19;
+	color: #fff;
+}
+.bot .message-content {
+	background: #f0f0f0;
+	color: #333;
+}
+.input-area {
+	padding: 20rpx;
+	background: #fff;
+	border-top: 1rpx solid #eee;
+	display: flex;
+	align-items: center;
+}
+.input-box {
+	flex: 1;
+	height: 72rpx;
+	background: #f5f5f5;
+	border-radius: 36rpx;
+	padding: 0 30rpx;
+	font-size: 28rpx;
+}
+.send-btn {
+	margin-left: 20rpx;
+	height: 72rpx;
+	line-height: 72rpx;
+	padding: 0 30rpx;
+	background: #1AAD19;
+	color: #fff;
+	border-radius: 36rpx;
+	font-size: 28rpx;
+}
+

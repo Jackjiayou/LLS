@@ -1,0 +1,1 @@
+# Database session and connection details go here 

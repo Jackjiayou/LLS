@@ -1,0 +1,1 @@
+<view class="login-container"><view class="logo"><image src="/static/logo.png" mode="aspectFit"></image></view><view class="title">欢迎使用</view><view class="subtitle">请授权登录以继续使用</view><button data-event-opts="{{[['tap',[['handleLogin',['$event']]]]]}}" class="login-btn" bindtap="__e">微信一键登录</button></view>
