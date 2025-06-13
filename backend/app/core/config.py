@@ -35,7 +35,8 @@ class Settings(BaseSettings):
     # 其他目录
     STATIC_DIR : str= os.path.join(BASE_DIR, "static")
     LOG_DIR : str= os.path.join(BASE_DIR, "logs")
-
+    vec_db_production: str = os.path.join(BASE_DIR,'db/fund_production_chunk')
+    vec_db_nucleotide: str = os.path.join(BASE_DIR, 'db/fund_nucleotide_chunk')
     class Config:
         env_file = ".env"
 

@@ -18,7 +18,7 @@ from urllib3 import encode_multipart_formdata
 lfasr_host = 'http://upload-ost-api.xfyun.cn/file'
 # 请求的接口名
 api_init = '/mpupload/init'
-api_upload = '../upload'
+api_upload = '/upload'
 api_cut = '/mpupload/upload'
 api_cut_complete = '/mpupload/complete'
 api_cut_cancel = '/mpupload/cancel'

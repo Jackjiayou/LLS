@@ -55,9 +55,9 @@ def analyze_message(message: str, scene_id: int, messages_all: List[Dict[str, An
 
         # 根据场景ID选择不同的分析策略
         if scene_id == 0:
-            db_path = './db/fund_nucleotide_chunk'
+            db_path = settings.vec_db_nucleotide
         else:
-            db_path = './db/fund_production_chunk'
+            db_path = settings.vec_db_production
 
         # 调用向量搜索获取相关上下文
         from app.utils.search_vectorDB import vector_search

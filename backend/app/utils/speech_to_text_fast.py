@@ -218,9 +218,9 @@ def speech_to_text(audio_file, app_id, api_key, api_secret):
         FileNotFoundError: 音频文件不存在
         Exception: 识别过程中发生错误
     """
-    app_id='945b4712'
-    api_key='ea534a9e6e9cd16ca30764ccf18901e9'
-    api_secret='ZWI2YzcyODhiZTQwNzQ4YjkxNjQzZTgx'
+    app_id='094ce94e'
+    api_key='7c3c7ba03eb9b7209984050f258809c7'
+    api_secret='NmY0YmYwMmVjYWI2NmIxNGExMzkxMDQw'
     stt = SpeechToText(app_id, api_key, api_secret)
     return stt.recognize(audio_file)
 

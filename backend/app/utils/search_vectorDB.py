@@ -7,7 +7,7 @@ sys.path.append(project_root)
 
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
-from utils.get_embedding_model import hf
+from app.utils.get_embedding_model import hf
 
 
 def vector_search(query, filter_query=None, db_path="./db/fund_production_chunk", k=1):

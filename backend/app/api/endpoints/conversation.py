@@ -6,6 +6,9 @@ import json
 import traceback
 import random
 import  os
+from app.models.scene import scenes
+from  app.utils.search_vectorDB import vector_search
+from  app.utils import getds
 from app.models.conversation import Message
 from app.services.conversation_service import (
     create_conversation,
@@ -104,3 +107,45 @@ async def speech_to_text(audio_file: UploadFile = File(...), sceneId: int = Form
             status_code=500,
             content={"message": f"上传文件处理失败: {str(e)}"}
         )
+
+
+@router.post("/analyze")
+async def analyze_message(request: Dict[str, Any]):
+    """
+    分析用户消息并生成改进建议
+    这里使用模拟数据，实际项目中应该调用大模型API
+    """
+    print("analyze_message start")
+    message = request.get("message", "")
+    scene_id = request.get("sceneId", 1)
+    message_all = request['messages_all']
+    sence_curr = scenes[scene_id]['description']
+
+    last_customer_text = None
+    his_data = json.loads(message_all)
+    for entry in reversed(his_data):
+        if entry.get("from") == "customer":
+            last_customer_text = entry.get("text")
+            break
+
+    if scene_id==0 :
+         db_path ='./db/fund_nucleotide_chunk'
+
+    result_msg = vector_search(query=f"{last_customer_text}",db_path=settings.vec_db_nucleotide,k=3)
+    q_msg = ''
+
+    if len(result_msg) > 0:
+        rag_text = result_msg[0].page_content
+        for it in result_msg:
+            q_msg = q_msg + "---------------------------------\n" + it.page_content
+        #print('rag_text:'+rag_text)
+    msg = getds.get_messages_analyze(message_all,q_msg,sence_curr)
+    #prompt_str = message_all + "上面是我们的聊天记录，聊天记录中我的标签是user，你的标签是assistant，请明确区分你我的对话，不要把你的话当成我说的，我是一名大健康行业直销员，你是顾客，请对我的最后一句话的回答，生成改进建议,不需要给出分析，直接给出改进建议和示例"
+    robot_words = getds.get_response_qwen(msg)
+    #robot_words1 = getds.get_response(msg)
+
+    print("analyze_message end")
+    return {
+        "suggestion": robot_words,
+        "score": random.randint(70, 95)
+    }
