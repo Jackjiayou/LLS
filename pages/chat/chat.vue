@@ -129,8 +129,7 @@
 				isRobotLoading: false,
 				// API地址配置
 				apiBaseUrl: config.apiBaseUrl, // 修改为您的实际API地址 ai.dl-dd.com
-                //apiBaseUrl: 'https://ai.dl-dd.com', // 修改为您的实际API地址 ai.dl-dd.com
-                //apiBaseUrl: 'http://182.92.109.197',
+
 				// 录音相关
 				showRecordingOverlay: false, // 是否显示录音提示浮层
 				recordingTipText: '准备录音...', // 录音提示文本
@@ -142,85 +141,7 @@
 				// 语音条宽度配置
 				minVoiceWidth: 120, // 最小宽度（rpx）
 				maxVoiceWidth: 400, // 最大宽度（rpx）
-				// 模拟场景问题库 - 仅作为备用
-				questionBank: {
-					1: [ // 新客户开发
-						{
-							text: "您好，我是客户李先生111。听说贵公司有一些不错的产品，能简单介绍一下吗？",
-							voiceUrl: this.apiBaseUrl+"/static/audio/scene1-q1.mp3",
-							duration: "5"
-						},
-						{
-							text: "我还不太了解你们公司的背景，能告诉我你们公司的情况吗？",
-							voiceUrl: this.apiBaseUrl+"/static/audio/scene1-q2.mp3",
-							duration: "4"
-						},
-						{
-							text: "市场上类似的产品很多，贵公司的产品有什么特别之处吗？",
-							voiceUrl: this.apiBaseUrl+"/static/audio/scene1-q3.mp3",
-							duration: "5"
-						}
-					],
-					2: [ // 异议处理
-						{
-							text: "这个价格对我来说有点高，能便宜一些吗？",
-							voiceUrl: this.apiBaseUrl+"/static/audio/scene2-q1.mp3",
-							duration: "3"
-						},
-						{
-							text: "我以前用过类似的产品，但效果不太理想，为什么我要选择你们的呢？",
-							voiceUrl: this.apiBaseUrl+"/static/audio/scene2-q2.mp3",
-							duration: "6"
-						},
-						{
-							text: "我需要考虑一下，可以过几天再联系你吗？",
-							voiceUrl: this.apiBaseUrl+"/static/audio/scene2-q3.mp3",
-							duration: "4"
-						}
-					],
-					3: [ // 产品推荐
-						{
-							text: "我需要一个能提高团队效率的工具，你们有什么推荐？",
-							voiceUrl: "/static/audio/scene3-q1.mp3",
-							duration: "4"
-						},
-						{
-							text: "我预算有限，有什么性价比高的选择吗？",
-							voiceUrl: "/static/audio/scene3-q2.mp3",
-							duration: "3"
-						},
-						{
-							text: "我们团队有20人，有适合团队使用的套餐吗？",
-							voiceUrl: "/static/audio/scene3-q3.mp3",
-							duration: "4"
-						}
-					],
-					4: [ // 成交技巧
-						{
-							text: "我对产品很满意，但现在签合同是不是太仓促了？",
-							voiceUrl: "/static/audio/scene4-q1.mp3",
-							duration: "4"
-						},
-						{
-							text: "如果我现在决定购买，有什么优惠吗？",
-							voiceUrl: "/static/audio/scene4-q2.mp3",
-							duration: "3"
-						},
-						{
-							text: "购买后如果不满意，能退款吗？",
-							voiceUrl: "/static/audio/scene4-q3.mp3",
-							duration: "3"
-						}
-					]
-				},
-				// 模拟改进建议
-				suggestionTemplates: [
-					"您的表达可以更加简洁明了，建议减少重复词语，直接表达核心信息。",
-					"可以使用更专业的术语来增强可信度，比如将'很好的产品'改为'高性价比的解决方案'。",
-					"回答时可以加入一些数据支持，增强说服力，例如'我们的产品已帮助超过1000家企业提升了30%的效率'。",
-					"语速过快，建议适当放慢并在关键点停顿，让客户有时间消化信息。",
-					"可以先认同客户的顾虑，再提出解决方案，如'您提到的价格问题很重要，我们可以...'。"
-				]
+				
 			}
 		},
 		onLoad(options) {
@@ -302,7 +223,8 @@
 					
 					const realMessages = this.messages.filter(msg => !(msg.from === 'customer' && msg.isLoading));
 					const response = await uni.request({
-						url: this.apiBaseUrl +'/get-robot-message',
+						//url: this.apiBaseUrl +'/conversation/get-robot-message',
+                        url: this.apiBaseUrl +'/conversation/get-robot-message',
 						method: 'GET',
 						data: {
 							sceneId: this.sceneId,
