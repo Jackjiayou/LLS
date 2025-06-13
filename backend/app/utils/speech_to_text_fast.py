@@ -7,7 +7,8 @@ import os
 import re
 import time
 import  json
-from fileupload import seve_file
+from app.utils.fileupload import seve_file
+#from fileupload import seve_file
 import  logging
 import  traceback
 # 配置日志

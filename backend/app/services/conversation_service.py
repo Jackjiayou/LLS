@@ -192,4 +192,5 @@ def get_robot_message(sceneId: int, messageCount: int, messages: Optional[str] =
     except Exception as e:
         traceback.print_exc()
         logger.error(f"获取机器人消息失败: {str(e)}")
-        raise 
+        raise
+

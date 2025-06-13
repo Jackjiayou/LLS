@@ -462,7 +462,7 @@
                 this.scrollToBottom();
 
 				uni.uploadFile({
-					url: `${this.apiBaseUrl}/speech-to-text`,
+					url: `${this.apiBaseUrl}/conversation/speech-to-text`,
 					filePath: voicePath,
 					name: 'audio_file',
 					formData: {

@@ -3,7 +3,7 @@ from app.api.endpoints import items, auth, conversation
 from app.db.database import engine, Base
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
-
+import  os
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
 
@@ -12,6 +12,11 @@ app = FastAPI()
 app.include_router(items.router)
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(conversation.router, prefix="/conversation", tags=["conversation"])
+
+
+os.makedirs(settings.file_path_voice, exist_ok=True)
+os.makedirs(settings.file_path_tts, exist_ok=True)
+
 
 # 挂载静态文件目录
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")

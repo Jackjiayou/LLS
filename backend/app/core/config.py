@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR : str= os.path.join(BASE_DIR, "uploads")
     file_path_tts : str= os.path.join(UPLOAD_DIR, 'tts')
     file_path_voice: str = os.path.join(UPLOAD_DIR, 'voice')
+    voice_url: str = f"{BASE_URL}/uploads/voice"
     # 其他目录
     STATIC_DIR : str= os.path.join(BASE_DIR, "static")
     LOG_DIR : str= os.path.join(BASE_DIR, "logs")
