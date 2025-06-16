@@ -244,6 +244,9 @@
 							userId: this.userId,
 							username: this.username,
 							conversationId: this.conversationId
+						},
+						header: {
+							'Content-Type': 'application/json'
 						}
 					});
 					if (response.statusCode === 200 && response.data) {
@@ -480,6 +483,11 @@
 						sceneId: this.sceneId,
 						fileName: fileName
 					},
+
+					header: {
+						'Authorization': `Bearer ${uni.getStorageSync('token')}`
+					},
+
 					success: (uploadRes) => {
 						try {
 							const data = JSON.parse(uploadRes.data);
@@ -558,6 +566,9 @@
 						message: text,
 						userId: this.userId,
 						conversationId: this.conversationId
+					},
+					header: {
+						'Content-Type': 'application/json'
 					}
 				}).then(res => {
 					if (res.data && res.data.suggestion) {

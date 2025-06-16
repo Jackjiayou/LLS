@@ -46,7 +46,11 @@
 						},
 						header: {
 							'Content-Type': 'application/json'
-						}
+						},
+						timeout: 30000, // 设置30秒超时
+						enableHttp2: true, // 启用HTTP2
+						enableQuic: true, // 启用QUIC
+						enableCache: false // 禁用缓存
 					})
 					
 					console.log('后端登录响应：', response)
