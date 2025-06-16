@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     STATIC_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static")
 
     BASE_DIR : str= os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-
+    APPID : str = 'wx7a2daa1f58be194c'
     # 上传目录
     UPLOAD_DIR : str= os.path.join(BASE_DIR, "uploads")
     file_path_tts : str= os.path.join(UPLOAD_DIR, 'tts')

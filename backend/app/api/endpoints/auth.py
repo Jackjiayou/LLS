@@ -62,7 +62,7 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         # 微信登录凭证校验
         url = f"https://api.weixin.qq.com/sns/jscode2session"
         params = {
-            "appid": "wx7a2daa1f58be194c",
+            "appid": settings.APPID,
             "secret": "d2ac10bec34434ee636c81db6d0d0167",
             "js_code": login_data.code,
             "grant_type": "authorization_code"
