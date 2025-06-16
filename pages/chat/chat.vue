@@ -110,6 +110,7 @@
 
 <script>
 	import config from '@/config.js'
+	import request from '@/utils/request.js'
 	
 	export default {
 		data() {
@@ -151,11 +152,20 @@
 				const userInfo = uni.getStorageSync('userInfo');
 				if (userInfo) {
 					this.userId = userInfo.userId;
-					this.username = userInfo.username;
+					this.username = userInfo.nickname;
 				} else {
-					// 如果没有用户信息，生成临时用户ID
-					this.userId = 'temp_' + Date.now();
-					this.username = '游客';
+					// 如果没有用户信息，跳转到登录页
+					uni.showToast({
+						title: '请先登录',
+						icon: 'none',
+						duration: 2000
+					});
+					setTimeout(() => {
+						uni.reLaunch({
+							url: '/pages/login/login'
+						});
+					}, 2000);
+					return;
 				}
 				// 生成对话ID
 				this.conversationId = 'conv_' + Date.now();
@@ -218,13 +228,11 @@
 			// 获取机器人消息
 			async getRobotMessage() {
 				try {
-					// 设置机器人消息加载标志为true
 					this.isRobotLoading = true;
 					
 					const realMessages = this.messages.filter(msg => !(msg.from === 'customer' && msg.isLoading));
-					const response = await uni.request({
-						//url: this.apiBaseUrl +'/conversation/get-robot-message',
-                        url: this.apiBaseUrl +'/conversation/get-robot-message',
+					const response = await request({
+						url: '/conversation/get-robot-message',
 						method: 'GET',
 						data: {
 							sceneId: this.sceneId,
@@ -537,8 +545,9 @@
 				const realMessages = this.messages.filter(msg => !(msg.from === 'customer' && msg.isLoading));
 				this.$set(this.messages[messageIndex], 'suggestionLoading', true);
 				this.$set(this.messages[messageIndex], 'suggestionError', false);
-				uni.request({
-					url: `${this.apiBaseUrl}/analyze`,
+				
+				request({
+					url: '/conversation/analyze',
 					method: 'POST',
 					data: {
 						messages_all: JSON.stringify(realMessages.map(msg => ({
@@ -547,45 +556,41 @@
 						}))),
 						sceneId: this.sceneId,
 						message: text,
-						allMessages: this.formatMessagesForAnalysis()
-					},
-					success: (res) => {
-						if (res.data && res.data.suggestion) {
-							this.$set(this.messages[messageIndex], 'suggestion', res.data.suggestion);
-							this.$set(this.messages[messageIndex], 'suggestionLoading', false);
-							this.$set(this.messages[messageIndex], 'suggestionError', false);
-						} else {
-							this.$set(this.messages[messageIndex], 'suggestionLoading', false);
-							this.$set(this.messages[messageIndex], 'suggestionError', true);
-						}
-					},
-					fail: (err) => {
+						userId: this.userId,
+						conversationId: this.conversationId
+					}
+				}).then(res => {
+					if (res.data && res.data.suggestion) {
+						this.$set(this.messages[messageIndex], 'suggestion', res.data.suggestion);
+						this.$set(this.messages[messageIndex], 'suggestionLoading', false);
+						this.$set(this.messages[messageIndex], 'suggestionError', false);
+					} else {
 						this.$set(this.messages[messageIndex], 'suggestionLoading', false);
 						this.$set(this.messages[messageIndex], 'suggestionError', true);
 					}
+				}).catch(err => {
+					this.$set(this.messages[messageIndex], 'suggestionLoading', false);
+					this.$set(this.messages[messageIndex], 'suggestionError', true);
 				});
 			},
 			// 获取润色表达
 			getPolishedText(text, messageIndex) {
-				uni.request({
-					url: `${this.apiBaseUrl}/polish-text`,
+				request({
+					url: '/polish-text',
 					method: 'POST',
 					data: {
 						text: text,
-						sceneId: this.sceneId
-					},
-					success: (res) => {
-						if (res.data && res.data.polishedText) {
-							console.log('获取润色表达成功:', res.data);
-							// 更新消息对象的润色内容
-							this.$set(this.messages[messageIndex], 'polishedText', res.data.polishedText);
-						}
-					},
-					fail: (err) => {
-						console.error('获取润色表达失败:', err);
-						// 设置一个默认的润色文本
-						this.$set(this.messages[messageIndex], 'polishedText', '润色表达生成失败，请稍后再试');
+						sceneId: this.sceneId,
+						userId: this.userId,
+						conversationId: this.conversationId
 					}
+				}).then(res => {
+					if (res.data && res.data.polishedText) {
+						this.$set(this.messages[messageIndex], 'polishedText', res.data.polishedText);
+					}
+				}).catch(err => {
+					console.error('获取润色表达失败:', err);
+					this.$set(this.messages[messageIndex], 'polishedText', '润色表达生成失败，请稍后再试');
 				});
 			},
 			// 格式化消息用于分析
@@ -846,31 +851,28 @@
 				});
 			},
 			generateReport() {
-				// 发送对话记录到后端，生成分析报告
 				console.log('生成练习报告...');
 				
-				uni.request({
-					url: `${this.apiBaseUrl}/report`,
+				request({
+					url: '/report',
 					method: 'POST',
-						data: {
-							sceneId: this.sceneId,
-						userId: 'user1', // 实际中应使用真实用户ID
+					data: {
+						sceneId: this.sceneId,
+						userId: this.userId,
+						conversationId: this.conversationId,
 						messages: this.formatMessagesForAnalysis()
-					},
-					success: (res) => {
-						console.log('报告生成成功:', res.data);
-						// 保存报告ID
-						if (res.data && res.data.reportId) {
-							uni.setStorageSync('latestReportId', res.data.reportId);
-						}
-					},
-					fail: (err) => {
-						console.error('报告生成失败:', err);
-						uni.showToast({
-							title: '报告生成失败',
-							icon: 'none'
-						});
 					}
+				}).then(res => {
+					console.log('报告生成成功:', res.data);
+					if (res.data && res.data.reportId) {
+						uni.setStorageSync('latestReportId', res.data.reportId);
+					}
+				}).catch(err => {
+					console.error('报告生成失败:', err);
+					uni.showToast({
+						title: '报告生成失败',
+						icon: 'none'
+					});
 				});
 			},
 			// 计算语音条宽度

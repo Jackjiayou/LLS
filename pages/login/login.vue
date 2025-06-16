@@ -11,6 +11,7 @@
 
 <script>
 	import config from '@/config.js'
+	import request from '@/utils/request.js'
 	
 	export default {
 		data() {
@@ -35,8 +36,8 @@
 					console.log('微信登录成功，返回：', loginRes)
 					
 					// 发送登录请求到后端
-					const response = await uni.request({
-						url: `${this.apiBaseUrl}/auth/login`,
+					const response = await request({
+						url: '/auth/login',
 						method: 'POST',
 						data: {
 							code: loginRes.code,
@@ -60,6 +61,7 @@
 						
 						// 保存用户信息到本地
 						uni.setStorageSync('userInfo', {
+							userId: response.data.user_id,
 							nickname: userProfileRes.userInfo.nickName,
 							avatarUrl: userProfileRes.userInfo.avatarUrl
 						})

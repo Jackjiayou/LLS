@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.endpoints import items, auth, conversation
+from app.api.endpoints import  auth, conversation
 from app.db.database import engine, Base
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
@@ -9,7 +9,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-app.include_router(items.router)
+
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(conversation.router, prefix="/conversation", tags=["conversation"])
 

@@ -27,4 +27,5 @@ class User(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    expires_at: datetime 
+    expires_at: datetime
+    user_id: str 
