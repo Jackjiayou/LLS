@@ -30,7 +30,35 @@ class ConversationService:
     def __init__(self):
         self.base_url = settings.BASE_URL + "/uploads/tts/"
         self.file_path = settings.file_path_tts
+        # 创建基础目录
         os.makedirs(settings.BASE_DIR + "/tts", exist_ok=True)
+        os.makedirs(settings.BASE_DIR + "/voice", exist_ok=True)
+
+    def _get_user_paths(self, user_id: str, conversation_id: Optional[str] = None) -> Dict[str, str]:
+        """获取用户相关的文件路径"""
+        # 基础路径
+        base_tts_path = os.path.join(settings.UPLOAD_DIR, "tts", user_id)
+        base_voice_path = os.path.join(settings.UPLOAD_DIR, "voice", user_id)
+
+        # 如果提供了会话ID，则创建会话子目录
+        if conversation_id:
+            tts_path = os.path.join(base_tts_path, conversation_id)
+            voice_path = os.path.join(base_voice_path, conversation_id)
+        else:
+            tts_path = base_tts_path
+            voice_path = base_voice_path
+
+        # 创建目录
+        os.makedirs(tts_path, exist_ok=True)
+        os.makedirs(voice_path, exist_ok=True)
+
+        # 返回URL路径
+        return {
+            "tts_path": tts_path,
+            "voice_path": voice_path,
+            "tts_url": f"{settings.BASE_URL}/uploads/tts/{user_id}/{conversation_id if conversation_id else ''}",
+            "voice_url": f"{settings.BASE_URL}/uploads/voice/{user_id}/{conversation_id if conversation_id else ''}"
+        }
 
     def analyze_message(self, message: str, scene_id: int, messages_all: List[Dict[str, Any]]) -> Dict[str, Any]:
         """分析用户消息并生成改进建议"""
@@ -69,7 +97,7 @@ class ConversationService:
                 "score": random.randint(70, 95)
             }
 
-    def get_robot_message(self, scene_id: int, message_count: int, messages: Optional[str] = None) -> Dict[str, Any]:
+    def get_robot_message(self, scene_id: int, message_count: int, messages: Optional[str] = None, user_id: Optional[str] = None, conversation_id: Optional[str] = None) -> Dict[str, Any]:
         """获取机器人消息"""
         try:
             # 解析历史消息
@@ -80,18 +108,24 @@ class ConversationService:
                 except:
                     pass
 
+            # 获取用户路径
+            paths = self._get_user_paths(user_id, conversation_id) if user_id else {
+                "tts_path": self.file_path,
+                "tts_url": self.base_url
+            }
+
             # 如果是第一条消息（初始问候）
             if message_count == 0:
-                return self._handle_initial_message(scene_id)
+                return self._handle_initial_message(scene_id, paths)
             else:
-                return self._handle_followup_message(history_messages)
+                return self._handle_followup_message(history_messages, paths)
 
         except Exception as e:
             traceback.print_exc()
             logger.error(f"获取机器人消息失败: {str(e)}")
             raise
 
-    def _handle_initial_message(self, scene_id: int) -> Dict[str, Any]:
+    def _handle_initial_message(self, scene_id: int, paths: Dict[str, str]) -> Dict[str, Any]:
         """处理初始问候消息"""
         scene_questions = scene.questions.get(scene_id, [])
         if not scene_questions:
@@ -105,13 +139,13 @@ class ConversationService:
             appid=settings.XUNFEI_APP_ID,
             apisecret=settings.XUNFEI_API_SECRET,
             apikey=settings.XUNFEI_API_KEY,
-            save_folder=self.file_path,
+            save_folder=paths["tts_path"],
         )
 
         file_name = os.path.basename(file_name)
-        y, sr = librosa.load(os.path.join(self.file_path, file_name), sr=None)
+        y, sr = librosa.load(os.path.join(paths["tts_path"], file_name), sr=None)
         duration = round(librosa.get_duration(y=y, sr=sr))
-        file_path_url = self.base_url + '/' + file_name
+        file_path_url = f"{paths['tts_url']}/{file_name}"
 
         return {
             "text": text,
@@ -119,7 +153,7 @@ class ConversationService:
             "voiceUrl": file_path_url
         }
 
-    def _handle_followup_message(self, history_messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _handle_followup_message(self, history_messages: List[Dict[str, Any]], paths: Dict[str, str]) -> Dict[str, Any]:
         """处理后续消息"""
         if not history_messages:
             raise ValueError("No history messages provided")
@@ -136,13 +170,13 @@ class ConversationService:
             appid=settings.XUNFEI_APP_ID,
             apisecret=settings.XUNFEI_API_SECRET,
             apikey=settings.XUNFEI_API_KEY,
-            save_folder=self.file_path
+            save_folder=paths["tts_path"]
         )
 
         file_name = os.path.basename(file_name)
-        y, sr = librosa.load(os.path.join(self.file_path, file_name), sr=None)
+        y, sr = librosa.load(os.path.join(paths["tts_path"], file_name), sr=None)
         duration = round(librosa.get_duration(y=y, sr=sr))
-        file_path_url = self.base_url + '/' + file_name
+        file_path_url = f"{paths['tts_url']}/{file_name}"
 
         return {
             "text": robot_words,
@@ -150,9 +184,15 @@ class ConversationService:
             "voiceUrl": file_path_url
         }
 
-    async def speech_to_text(self, audio_file: bytes, scene_id: Optional[int] = None, file_name: Optional[str] = None) -> Dict[str, Any]:
+    async def speech_to_text(self, audio_file: bytes, scene_id: Optional[int] = None, file_name: Optional[str] = None, user_id: Optional[str] = None, conversation_id: Optional[str] = None) -> Dict[str, Any]:
         """将语音文件转换为文本"""
         try:
+            # 获取用户路径
+            paths = self._get_user_paths(user_id, conversation_id) if user_id else {
+                "voice_path": settings.file_path_voice,
+                "voice_url": settings.voice_url
+            }
+
             # 使用传入的文件名或生成新的文件名
             if not file_name:
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -164,21 +204,21 @@ class ConversationService:
                 file_name += '.mp3'
 
             # 保存上传的文件
-            file_location = f"{settings.file_path_voice}/{file_name}"
-            os.makedirs(settings.file_path_voice, exist_ok=True)
+            file_location = os.path.join(paths["voice_path"], file_name)
+            os.makedirs(os.path.dirname(file_location), exist_ok=True)
 
             # 确保文件上传成功
             with open(file_location, "wb") as f:
                 f.write(audio_file)
 
             # 生成可访问的完整URL
-            voice_url = f"{settings.voice_url}/{file_name}"
-            local_url = os.path.join(settings.file_path_voice, file_name)
+            voice_url = f"{paths['voice_url']}/{file_name}"
+            local_url = file_location
 
             # 极速版
             new_name = convert_mp3_16k(local_url)
             new_local_url = file_name.replace('.mp3', '_16k.mp3')
-            new_url = os.path.join(settings.file_path_voice, new_name)
+            new_url = os.path.join(paths["voice_path"], new_name)
             str_result = st(new_url, settings.XUNFEI_APP_ID, settings.XUNFEI_API_KEY, settings.XUNFEI_API_SECRET)
             str_result = extract_words_from_lattice2(str_result)
 

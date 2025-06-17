@@ -36,7 +36,13 @@ async def get_robot_response(
         if userId and str(token["sub"]) != userId:
             raise HTTPException(status_code=403, detail="Unauthorized access")
             
-        result = conversation_service.get_robot_message(sceneId, messageCount, messages)
+        result = conversation_service.get_robot_message(
+            sceneId,
+            messageCount,
+            messages,
+            userId,
+            conversationId
+        )
         return result
     except Exception as e:
         logger.error(f"获取机器人消息失败: {str(e)}")
@@ -63,9 +69,15 @@ async def speech_to_text(
     try:
         if str(token["sub"]) != userId:
             raise HTTPException(status_code=403, detail="Unauthorized access")
-            
+
         contents = await audio_file.read()
-        result = await conversation_service.speech_to_text(contents, sceneId, fileName)
+        result = await conversation_service.speech_to_text(
+            contents,
+            sceneId,
+            fileName,
+            userId,
+            conversationId
+        )
         return result
 
     except Exception as e:
