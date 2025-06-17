@@ -111,6 +111,7 @@
 <script>
 	import config from '@/config.js'
 	import request from '@/utils/request.js'
+	import { v4 as uuidv4 } from 'uuid'
 	
 	export default {
 		data() {
@@ -145,6 +146,10 @@
 				
 			}
 		},
+		created() {
+			// 从本地存储获取用户ID
+			this.userId = uni.getStorageSync('userId') || '';
+		},
 		onLoad(options) {
 			if (options.sceneId) {
 				this.sceneId = parseInt(options.sceneId);
@@ -167,8 +172,9 @@
 					}, 2000);
 					return;
 				}
-				// 生成对话ID
-				this.conversationId = 'conv_' + Date.now();
+				
+				// 每次进入页面时生成新的会话ID
+				this.startNewConversation();
 				
 				this.getSceneInfo();
 				// 初始化录音管理器
@@ -191,10 +197,19 @@
 			}
 		},
 		methods: {
+			// 开始新会话
+			startNewConversation() {
+				this.conversationId = uuidv4();
+				this.messages = [];
+				// 保存新的会话ID
+				uni.setStorageSync('currentConversationId', this.conversationId);
+				console.log('新会话ID:', this.conversationId);
+			},
+
 			getSceneInfo() {
 				// 获取场景名称
 				const sceneNames = {
-                    0: '核苷酸介绍',
+					0: '核苷酸介绍',
 					1: '新客户开发',
 					2: '异议处理',
 					3: '产品推荐',
@@ -455,22 +470,22 @@
 				const randomStr = Math.random().toString(36).substring(2, 8);
 				const fileName = `audio_${timestamp}_${randomStr}.mp3`;
 
-                // 1. 立即插入占位消息
-                const userMessageIndex = this.messages.length;
-                this.messages.push({
-                  from: 'user',
-                  text: '语音识别中...',
-                  voiceUrl: voicePath, // 本地临时文件
-                  duration: '',
-                  suggestion: '',
-                  polishedText: '',
-                  showSuggestion: false,
-                  isPlaying: false,
-                  suggestionLoading: false,
-                  suggestionError: false,
-                  isLoading: true
-                });
-                this.scrollToBottom();
+				// 1. 立即插入占位消息
+				const userMessageIndex = this.messages.length;
+				this.messages.push({
+					from: 'user',
+					text: '语音识别中...',
+					voiceUrl: voicePath, // 本地临时文件
+					duration: '',
+					suggestion: '',
+					polishedText: '',
+					showSuggestion: false,
+					isPlaying: false,
+					suggestionLoading: false,
+					suggestionError: false,
+					isLoading: true
+				});
+				this.scrollToBottom();
 
 				uni.uploadFile({
 					url: `${this.apiBaseUrl}/conversation/speech-to-text`,
@@ -492,61 +507,61 @@
 						try {
 							const data = JSON.parse(uploadRes.data);
 							if (data.text) {
-                        // 2. 替换占位消息内容为真实内容
-                        this.$set(this.messages, userMessageIndex, {
-                          from: 'user',
-                          text: data.text,
-                          voiceUrl: data.voiceUrl || voicePath,
-                          duration: duration.toString(),
-                          suggestion: '',
-                          polishedText: '',
-                          showSuggestion: false,
-                          isPlaying: false,
-                          suggestionLoading: true,
-                          suggestionError: false,
-                          isLoading: false
-                        });
-							// 预下载用户语音
-							if (data.voiceUrl) {
-								this.preDownloadVoice(data.voiceUrl);
+								// 2. 替换占位消息内容为真实内容
+								this.$set(this.messages, userMessageIndex, {
+									from: 'user',
+									text: data.text,
+									voiceUrl: data.voiceUrl || voicePath,
+									duration: duration.toString(),
+									suggestion: '',
+									polishedText: '',
+									showSuggestion: false,
+									isPlaying: false,
+									suggestionLoading: true,
+									suggestionError: false,
+									isLoading: false
+								});
+								// 预下载用户语音
+								if (data.voiceUrl) {
+									this.preDownloadVoice(data.voiceUrl);
+								}
+								this.scrollToBottom();
+								// 并行获取建议和机器人回复
+								
+								// 立即插入假机器人语音条
+								this.messages.push({
+									from: 'customer',
+									text: '机器人正在回复...',
+									voiceUrl: '',
+									duration: '',
+									isPlaying: false,
+									isLoading: true,
+									timestamp: new Date().toISOString()
+								});
+								this.isRobotLoading = true;  // 设置机器人加载标志
+								this.getRobotMessage();
+								this.getMessageSuggestion(data.text, userMessageIndex);
+								
+							} else {
+								// 语音识别失败，移除假语音条
+								this.messages.splice(userMessageIndex, 1);
+								uni.showToast({ title: '语音识别失败', icon: 'none' });
 							}
-							this.scrollToBottom();
-							// 并行获取建议和机器人回复
-							
-							// 立即插入假机器人语音条
-							this.messages.push({
-								from: 'customer',
-								text: '机器人正在回复...',
-								voiceUrl: '',
-								duration: '',
-								isPlaying: false,
-								isLoading: true,
-								timestamp: new Date().toISOString()
-							});
-							this.isRobotLoading = true;  // 设置机器人加载标志
-							this.getRobotMessage();
-                            this.getMessageSuggestion(data.text, userMessageIndex);
-							
-						} else {
-							// 语音识别失败，移除假语音条
+						} catch (e) {
+							// 解析失败，移除假语音条
 							this.messages.splice(userMessageIndex, 1);
+							console.error('解析语音识别结果失败:', e);
 							uni.showToast({ title: '语音识别失败', icon: 'none' });
 						}
-					} catch (e) {
-						// 解析失败，移除假语音条
+					},
+					fail: (err) => {
+						// 上传失败，移除假语音条
 						this.messages.splice(userMessageIndex, 1);
-						console.error('解析语音识别结果失败:', e);
-						uni.showToast({ title: '语音识别失败', icon: 'none' });
-					}
-				},
-				fail: (err) => {
-					// 上传失败，移除假语音条
-					this.messages.splice(userMessageIndex, 1);
-					console.error('上传语音失败:', err);
-					uni.showToast({ title: '上传语音失败', icon: 'none' });
-				},
-				complete: () => { uni.hideLoading(); }
-			});
+						console.error('上传语音失败:', err);
+						uni.showToast({ title: '上传语音失败', icon: 'none' });
+					},
+					complete: () => { uni.hideLoading(); }
+				});
 			},
 			// 获取消息改进建议
 			getMessageSuggestion(text, messageIndex) {
