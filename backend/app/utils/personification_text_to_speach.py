@@ -16,20 +16,7 @@ import _thread as thread
 import os
 import  logging
 import  traceback
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('../app.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-#本demo示例是单次上传文本的示例，如果用在对时效要求高的交互场景，需要流式上传文本
-# STATUS_FIRST_FRAME = 0  # 第一帧的标识
-# STATUS_CONTINUE_FRAME = 1  # 中间帧标识
-# STATUS_LAST_FRAME = 2  # 最后一帧的标识
+from app.core.logger import logger
 
 
 class Ws_Param(object):

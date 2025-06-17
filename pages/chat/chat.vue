@@ -54,7 +54,7 @@
 										<text class="retry-icon">↻</text>
 									</template>
 									<template v-else>
-										<text>{{msg.showSuggestion ? '收起改进建议' : '查看改进建议'}}</text>
+										<text>{{msg.showSuggestion ? '收起表达建议' : '查看表达建议'}}</text>
 									</template>
 								</view>
 								<view class="suggestion-content" v-if="msg.showSuggestion">

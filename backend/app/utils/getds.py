@@ -1,19 +1,10 @@
 # coding=utf-8
 
 from openai import OpenAI
-import  logging
+from app.core.logger import logger
 import  traceback
 from datetime import datetime
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+
 DP_URL = 'https://api.deepseek.com/v1'
 DP_KEY ='sk-083524dfc0b747d69bfcf3fd5b19c9ca'
 

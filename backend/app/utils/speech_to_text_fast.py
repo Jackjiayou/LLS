@@ -11,16 +11,7 @@ from app.utils.fileupload import seve_file
 #from fileupload import seve_file
 import  logging
 import  traceback
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('../app.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+from app.core.logger import logger
 
 class SpeechToText:
     def __init__(self, app_id, api_key, api_secret):
