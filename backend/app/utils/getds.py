@@ -117,28 +117,26 @@ def get_messages_ai( history):
 
     return messages
 
-def get_messages_analyze( history,rag_msg,sence):
-    # 构建系统消息（包含角色定义和规则） 下面是一段顾客（customer）和用户(user)的聊天记录，顾客提问，用户回答，聊天记录中，
+def get_messages_analyze(history, rag_msg, sence):
+    # 构建系统消息（包含角色定义和规则）
     content = f'''{sence}，根据下面聊天记录中顾客（assistant）与珍奥双迪的销售员（user）的对话，根据历史对话给出改进建议和示例。
                 改进建议生成要求如下:
                 1.根据销售员（user）最后一句的回答进行分析，生成改进建议.
                 
                 示例生成要求如下：
-                1.根据顾客（assistant）最后一句话并且结合以下给的资料 “{rag_msg}” 给出示例,示例字数不用过多 简洁明了,
+                1.根据顾客（assistant）最后一句话并且结合以下给的资料 "{rag_msg}" 给出示例,示例字数不用过多 简洁明了,
                 2.生成的示例要根据给的资料的内容，但不能虚构案例和数据，尤其想一些指标、详细信息、配料表、案例等信息不可以虚构
                 3.如果示例中设计公司产品的数据案例等信息一定要基于给的资料'''
-
 
     system_message = {
         'role': 'system',
         'content': content
     }
-    data1 = json.loads(history)
-    # 构建用户历史消息（聊天记录）
+    
+    # 直接使用 history 列表，不需要 json.loads
     messages = [system_message]
-    for history_item in data1:
+    for history_item in history:
         messages.append({'role': 'assistant' if history_item['from']=='customer' else 'user', 'content': history_item['text']})
-
 
     return messages
 
