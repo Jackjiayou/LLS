@@ -11,9 +11,6 @@ from app.utils.search_vectorDB import vector_search
 from app.utils import getds
 from app.models.conversation import Message
 from app.services.conversation_service import (
-    create_conversation,
-    get_conversation,
-    add_message,
     analyze_message,
     get_robot_message
 )

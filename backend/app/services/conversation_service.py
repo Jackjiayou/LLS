@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 import json
 import random
 import logging
-from app.models.conversation import Conversation, Message, conversations, suggestion_templates
+from app.models.conversation import Conversation, Message
 from ..core.config import settings
 from ..utils import getds
 from ..models import scene
@@ -12,35 +12,6 @@ from ..utils.personification_text_to_speach  import text_to_speech
 import librosa
 import  traceback
 from app.core.logger import logger, log_request, log_response, log_error
-
-def create_conversation(user_id: str, scene_id: int) -> Conversation:
-    """创建新的对话"""
-    conversation_id = str(uuid.uuid4())
-    conversation = Conversation(
-        id=conversation_id,
-        user_id=user_id,
-        scene_id=scene_id,
-        messages=[],
-        created_at=datetime.now(),
-        updated_at=datetime.now()
-    )
-    conversations[conversation_id] = conversation
-    return conversation
-
-
-def get_conversation(conversation_id: str) -> Optional[Conversation]:
-    """获取指定对话"""
-    return conversations.get(conversation_id)
-
-
-def add_message(conversation_id: str, message: Message) -> Optional[Conversation]:
-    """添加消息到对话"""
-    conversation = conversations.get(conversation_id)
-    if conversation:
-        conversation.messages.append(message)
-        conversation.updated_at = datetime.now()
-        return conversation
-    return None
 
 
 def analyze_message(message: str, scene_id: int, messages_all: List[Dict[str, Any]]) -> Dict[str, Any]:
