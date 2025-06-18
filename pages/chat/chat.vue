@@ -173,9 +173,10 @@
 					return;
 				}
 				
+                console.log('创建对话onload')
 				// 每次进入页面时生成新的会话ID
 				this.startNewConversation();
-				
+				this.startNewPractice();
 				this.getSceneInfo();
 				// 初始化录音管理器
 				this.initRecorder();
@@ -197,6 +198,146 @@
 			}
 		},
 		methods: {
+            // 开始新练习
+            // 开始新练习
+            async startNewPractice() {
+                try {
+                    // 确保 sceneId 和 userId 是数字类型
+                    const sceneId = parseInt(this.sceneId);
+                    const userId = parseInt(this.userId);
+                    
+                    console.log('开始练习参数:', { sceneId, userId });
+                    
+                    const response = await request({
+                        url: '/conversation/practice/start',
+                        method: 'POST',
+                        data: {
+                            sceneId: sceneId,
+                            userId: userId
+                        },
+                        header: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.data && response.data.practice_id) {
+                        this.practiceId = response.data.practice_id;
+                        this.isPracticeActive = true;
+                        console.log('练习开始，ID:', this.practiceId);
+                    }
+                } catch (error) {
+                    console.error('开始练习失败:', error);
+                    // 显示错误提示
+                    uni.showModal({
+                        title: '提示',
+                        content: '开始对话失败，是否重新开始？',
+                        confirmText: '重新开始',
+                        cancelText: '返回首页',
+                        success: (res) => {
+                            if (res.confirm) {
+                                // 用户点击重新开始，重新加载页面
+                                uni.reLaunch({
+                                    url: `/pages/chat/chat?sceneId=${this.sceneId}`
+                                });
+                            } else {
+                                // 用户点击返回首页
+                                uni.navigateBack({
+                                    delta: 2  // 返回上上页
+                                });
+                            }
+                        }
+                    });
+                }
+            },
+            
+            // 保存消息到练习记录
+            async saveMessageToPractice(message) {
+                if (!this.isPracticeActive || !this.practiceId) return;
+                
+                try {
+                    await request({
+                        url: '/conversation/practice/message',
+                        method: 'POST',
+                        data: {
+                            practice_id: this.practiceId,
+                            message: {
+                                from: message.from,
+                                text: message.text,
+                                voiceUrl: message.voiceUrl,
+                                duration: message.duration,
+                                suggestion: message.suggestion,
+                                timestamp: message.timestamp
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('保存消息失败:', error);
+                }
+            },
+            
+            // 修改现有的 endPractice 方法
+            async endPractice() {
+                if (!this.isPracticeActive || !this.practiceId) return;
+                
+                try {
+                    await request({
+                        url: '/conversation/practice/end',
+                        method: 'POST',
+                        data: {
+                            practice_id: this.practiceId
+                        }
+                    });
+                    
+                    this.isPracticeActive = false;
+                    this.showEndDialog = true;
+                } catch (error) {
+                    console.error('结束练习失败:', error);
+                    uni.showToast({
+                        title: '结束练习失败',
+                        icon: 'none'
+                    });
+                }
+            },
+            
+            // 格式化并发送聊天记录
+            async saveChatHistory() {
+                try {
+                    // 过滤掉加载中的消息
+                    const realMessages = this.messages.filter(msg => !msg.isLoading);
+                    
+                    // 格式化消息为指定格式
+                    const formattedMessages = realMessages.map(msg => ({
+                        from: msg.from,
+                        text: msg.text,
+                        voiceUrl: msg.voiceUrl || '',
+                        duration: parseInt(msg.duration) || 0,
+                        suggestion: msg.suggestion || '',
+                        timestamp: msg.timestamp || new Date().toISOString()
+                    }));
+        
+                    // 发送到后端
+                    const response = await request({
+                        url: '/conversation/practice/save-json-message',
+                        method: 'POST',
+                        data: {
+                            practice_id: this.practiceId,
+                            chat_history: formattedMessages
+                        },
+                        header: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+        
+                    if (response.data && response.data.success) {
+                        console.log('聊天记录保存成功');
+                    } else {
+                        console.error('聊天记录保存失败:', response.data);
+                    }
+                } catch (error) {
+                    console.error('保存聊天记录时发生错误:', error);
+                }
+            },
+            
 			// 开始新会话
 			startNewConversation() {
 				this.conversationId = uuidv4();
@@ -863,6 +1004,8 @@
 				this.showEndDialog = false;
 			},
 			endOnly() {
+                console.log('调用saveChatHistory')
+                this.saveChatHistory()
 				// 结束对话，返回首页
 				uni.navigateBack({
 					delta: 2 // 返回上上页
@@ -926,8 +1069,10 @@
 					// 否则切换显示/隐藏
 					this.toggleSuggestion(index);
 				}
-			},
+			}
 		}
+        
+        
 	}
 </script>
 

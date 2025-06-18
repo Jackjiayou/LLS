@@ -5,6 +5,7 @@ import json
 import random
 import logging
 import os
+from sqlalchemy import func
 import traceback
 import librosa
 from app.models.conversation import Conversation, Message
@@ -16,6 +17,16 @@ from app.core.logger import logger, log_request, log_response, log_error
 from app.utils.search_vectorDB import vector_search
 from app.utils.audio import convert_mp3_16k, extract_words_from_lattice2
 from app.utils.speech_to_text_fast import speech_to_text as st
+from app.models.practice import PracticeRecord, PracticeMessage
+from app.db.database import SessionLocal
+from app.schemas.practice import (
+    StartPracticeRequest,
+    StartPracticeResponse,
+    PracticeMessage,
+    SavePracticeMessageRequest,
+    EndPracticeRequest,
+    PracticeHistoryResponse
+)
 
 # 改进建议模板
 suggestion_templates = [
@@ -31,8 +42,164 @@ class ConversationService:
         self.base_url = settings.BASE_URL + "/uploads/tts/"
         self.file_path = settings.file_path_tts
         # 创建基础目录
+        self.current_practice_id = None
         os.makedirs(settings.BASE_DIR + "/tts", exist_ok=True)
         os.makedirs(settings.BASE_DIR + "/voice", exist_ok=True)
+
+    async def start_practice(self, user_id: int, scenario_id: int) -> Dict[str, Any]:
+        """开始新的练习"""
+        try:
+            with SessionLocal() as db:
+                practice = PracticeRecord(
+                    user_id=user_id,
+                    scenario_id=scenario_id,
+                    status='in_progress'
+                )
+                db.add(practice)
+                db.commit()
+                db.refresh(practice)
+
+                self.current_practice_id = practice.practice_id
+                return {
+                    "practice_id": practice.practice_id,
+                    "started_at": practice.started_at
+                }
+        except Exception as e:
+            logger.error(f"开始练习失败: {str(e)}")
+            traceback.print_exc()
+            raise
+
+    async def save_json_message(self, practice_id: int, messages: List[Dict[str, Any]]) -> None:
+        """保存单条消息"""
+        try:
+            #chat_history  = json.dumps(message, ensure_ascii=False)
+            with SessionLocal() as db:
+                # 获取练习记录
+                practice = db.query(PracticeRecord) \
+                    .filter(PracticeRecord.practice_id == practice_id) \
+                    .first()
+
+                if not practice:
+                    raise ValueError(f"Practice record not found: {practice_id}")
+
+                # 直接更新整个 chat_history
+                message_list = []
+                for msg in messages:
+                    message_dict = {
+                        "from": msg.from_,  # 注意这里使用 from_ 因为 from 是 Python 关键字
+                        "text": msg.text,
+                        "voiceUrl": msg.voiceUrl,
+                        "duration": msg.duration,
+                        "suggestion": msg.suggestion,
+                        "timestamp": msg.timestamp
+                    }
+                    message_list.append(message_dict)
+
+                practice.chat_history = message_list
+                practice.updated_at = datetime.utcnow()
+
+                # 提交更改
+                db.commit()
+
+            logger.info(f"Successfully saved chat history for practice {practice_id}")
+        except Exception as e:
+            logger.error(f"保存消息失败: {str(e)}")
+            raise
+
+    async def save_message(self, practice_id: int, message: Dict[str, Any]) -> None:
+        """保存单条消息"""
+        try:
+            with SessionLocal() as db:
+                # 获取当前最大消息序号
+                max_order = db.query(func.max(PracticeMessage.message_order)) \
+                                .filter(PracticeMessage.practice_id == practice_id) \
+                                .scalar() or 0
+
+                # 创建新消息记录
+                practice_message = PracticeMessage(
+                    practice_id=practice_id,
+                    message_type=message['from'],
+                    content=message['text'],
+                    voice_url=message.get('voiceUrl'),
+                    duration=message.get('duration'),
+                    suggestion=message.get('suggestion'),
+                    message_order=max_order + 1
+                )
+                db.add(practice_message)
+
+                # 更新练习记录的更新时间
+                practice = db.query(PracticeRecord) \
+                    .filter(PracticeRecord.practice_id == practice_id) \
+                    .first()
+                if practice:
+                    practice.updated_at = datetime.utcnow()
+
+                db.commit()
+        except Exception as e:
+            logger.error(f"保存消息失败: {str(e)}")
+            traceback.print_exc()
+            raise
+
+    async def end_practice(self, practice_id: int, score_json: Optional[Dict[str, Any]] = None) -> None:
+        """结束练习"""
+        try:
+            with SessionLocal() as db:
+                practice = db.query(PracticeRecord) \
+                    .filter(PracticeRecord.practice_id == practice_id) \
+                    .first()
+                if not practice:
+                    raise ValueError(f"Practice {practice_id} not found")
+
+                practice.status = 'completed'
+                practice.ended_at = datetime.utcnow()
+                if score_json:
+                    practice.score_json = score_json
+
+                db.commit()
+        except Exception as e:
+            logger.error(f"结束练习失败: {str(e)}")
+            traceback.print_exc()
+            raise
+
+    async def get_practice_history(self, practice_id: int) -> Dict[str, Any]:
+        """获取练习历史记录"""
+        try:
+            with SessionLocal() as db:
+                practice = db.query(PracticeRecord) \
+                    .filter(PracticeRecord.practice_id == practice_id) \
+                    .first()
+                if not practice:
+                    raise ValueError(f"Practice {practice_id} not found")
+
+                messages = db.query(PracticeMessage) \
+                    .filter(PracticeMessage.practice_id == practice_id) \
+                    .order_by(PracticeMessage.message_order) \
+                    .all()
+
+                return {
+                    "practice_id": practice.practice_id,
+                    "user_id": practice.user_id,
+                    "scenario_id": practice.scenario_id,
+                    "started_at": practice.started_at,
+                    "ended_at": practice.ended_at,
+                    "status": practice.status,
+                    "score_json": practice.score_json,
+                    "messages": [
+                        {
+                            "from": msg.message_type,
+                            "text": msg.content,
+                            "voiceUrl": msg.voice_url,
+                            "duration": msg.duration,
+                            "suggestion": msg.suggestion,
+                            "timestamp": msg.created_at
+                        }
+                        for msg in messages
+                    ]
+                }
+        except Exception as e:
+            logger.error(f"获取练习历史失败: {str(e)}")
+            traceback.print_exc()
+            raise
 
     def _get_user_paths(self, user_id: str, conversation_id: Optional[str] = None) -> Dict[str, str]:
         """获取用户相关的文件路径"""
@@ -92,10 +259,8 @@ class ConversationService:
             }
         except Exception as e:
             logger.error(f"分析消息失败: {str(e)}")
-            return {
-                "suggestion": random.choice(suggestion_templates),
-                "score": random.randint(70, 95)
-            }
+            traceback.print_exc()
+            raise
 
     def get_robot_message(self, scene_id: int, message_count: int, messages: Optional[str] = None, user_id: Optional[str] = None, conversation_id: Optional[str] = None) -> Dict[str, Any]:
         """获取机器人消息"""
