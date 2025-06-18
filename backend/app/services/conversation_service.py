@@ -95,6 +95,8 @@ class ConversationService:
                     }
                     message_list.append(message_dict)
 
+                practice.status = 'completed'
+                practice.ended_at = datetime.utcnow()
                 practice.chat_history = message_list
                 practice.updated_at = datetime.utcnow()
 
