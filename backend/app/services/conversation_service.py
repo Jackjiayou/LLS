@@ -105,6 +105,7 @@ class ConversationService:
 
             logger.info(f"Successfully saved chat history for practice {practice_id}")
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"保存消息失败: {str(e)}")
             raise
 

@@ -188,17 +188,22 @@ def on_open(ws):
 def text_to_speech(text,appid,apisecret,apikey,save_folder):
     # 从控制台页面获取以下密钥信息，控制台地址：https://console.xfyun.cn/app/myapp
     try:
-
+        import uuid
         appid = '945b4712'
         apisecret = 'ZWI2YzcyODhiZTQwNzQ4YjkxNjQzZTgx'
         apikey = 'ea534a9e6e9cd16ca30764ccf18901e9'
 
-        root_folder = save_folder
-        now = datetime.now()
-        timestamp = int(now.timestamp())
-        file_path = f"{root_folder}\\{timestamp}.mp3"
-        file_name = f"{timestamp}.mp3"
+        # now = datetime.now()
+        # timestamp = int(now.timestamp())
+        # file_path = f"{save_folder}\\{timestamp}.mp3"
+        # file_name = f"{timestamp}.mp3"
 
+        unique_id = str(uuid.uuid4())
+        timestamp = int(datetime.now().timestamp())
+        file_name = f"{timestamp}_{unique_id}.mp3"
+
+        # 使用 os.path.join 构建路径
+        file_path = os.path.join(save_folder, file_name)
         wsParam = Ws_Param(APPID=appid, APISecret=apisecret,
                            APIKey=apikey,
                            Text=text)
@@ -213,8 +218,9 @@ def text_to_speech(text,appid,apisecret,apikey,save_folder):
         ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
         return file_name
     except Exception as e:
+        traceback.print_exc()
         logger.error(traceback.format_exc())
-        print(e)
+        raise
 
 
 
