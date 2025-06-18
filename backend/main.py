@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.endpoints import  auth, conversation
+from app.api.endpoints import  auth, conversation,practice_info
 from app.db.database import engine, Base
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
@@ -12,10 +12,10 @@ app = FastAPI()
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(conversation.router, prefix="/conversation", tags=["conversation"])
+app.include_router(practice_info.router, prefix="/practice", tags=["practice"])
 
-
-os.makedirs(settings.file_path_voice, exist_ok=True)
-os.makedirs(settings.file_path_tts, exist_ok=True)
+# os.makedirs(settings.file_path_voice, exist_ok=True)
+# os.makedirs(settings.file_path_tts, exist_ok=True)
 
 
 # 挂载静态文件目录

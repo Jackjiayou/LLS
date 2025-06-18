@@ -14,15 +14,15 @@
 			<text class="username">{{userInfo.name}}</text>
 			<view class="user-stats">
 				<view class="stat-item">
-					<text class="stat-value">12</text>
+					<text class="stat-value">{{stats.practice_count}}</text>
 					<text class="stat-label">练习次数</text>
 				</view>
 				<view class="stat-item">
-					<text class="stat-value">3.5h</text>
+					<text class="stat-value">{{stats.total_duration}}h</text>
 					<text class="stat-label">练习时长</text>
 				</view>
 				<view class="stat-item">
-					<text class="stat-value">4</text>
+					<text class="stat-value">{{stats.scenario_count}}</text>
 					<text class="stat-label">练习场景</text>
 				</view>
 			</view>
@@ -62,6 +62,11 @@
 	export default {
 		data() {
 			return {
+                stats: {
+                        practice_count: 0,
+                        total_duration: 0,
+                        scenario_count: 0
+                      },
                 apiBaseUrl: config.apiBaseUrl,
 				userInfo: {
 					avatar: '',
@@ -112,6 +117,26 @@
 			this.checkLoginStatus();
 		},
 		methods: {
+            async getPracticeStats() {
+                  try {
+                    const token = uni.getStorageSync('token');
+                    const res = await uni.request({
+                      url: `${this.apiBaseUrl}/practice/stats`,
+                      method: 'GET',
+                      header: {
+                        'Authorization': `Bearer ${token}`
+                      }
+                    });
+                    
+                    if (res.statusCode === 200) {
+                      this.stats = res.data;
+                    } else {
+                      console.error('Failed to fetch practice stats:', res);
+                    }
+                  } catch (error) {
+                    console.error('Get practice stats caught error:', error);
+                  }
+                },
 			async checkLoginStatus() {
 				console.log('Checking login status...');
 				const token = uni.getStorageSync('token');
@@ -173,6 +198,7 @@
 				console.log('Login status good, getting user info and initializing scenes.');
 				// 获取用户信息
 				this.getUserInfo();
+                await this.getPracticeStats();
 				// 初始化图片路径
 				this.scenes[0].icon = this.apiBaseUrl + '/uploads/static/scene1.png';
 				this.scenes[1].icon = this.apiBaseUrl + '/uploads/static/scene2.png';

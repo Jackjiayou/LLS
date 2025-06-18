@@ -56,6 +56,11 @@ class ChatMessage(BaseModel):
     class Config:
         allow_population_by_field_name = True  # This allows both 'from' and 'from_' to work
 
+class PracticeStatsResponse(BaseModel):
+    practice_count: int
+    total_duration: float  # 单位：小时
+    scenario_count: int
+
 class SaveJsonMessageRequest(BaseModel):
     practice_id: int
     chat_history: List[ChatMessage]
