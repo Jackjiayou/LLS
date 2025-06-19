@@ -29,6 +29,13 @@
         	"style": {
         		"navigationBarTitleText": "练习报告"
         	}
+        },
+        {
+            "path" : "pages/assistant/assistant",
+            "style" : 
+            {
+                "navigationBarTitleText" : "assistant"
+            }
         }
         
 	],

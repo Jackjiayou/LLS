@@ -10,6 +10,13 @@ class Message(BaseModel):
     timestamp: datetime
     suggestion: Optional[str] = None
 
+class AsisMessage(BaseModel):
+    from_user: str  # 'user' 或 'robot'
+    text: str
+    voiceUrl: str
+    duration: str
+    timestamp: datetime
+
 class Conversation(BaseModel):
     id: str
     user_id: str

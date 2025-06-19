@@ -264,7 +264,7 @@
 			goToDigitalHuman() {
 				// 跳转到珍迪助手页面
 				uni.navigateTo({
-					url: '/pages/digital-human/index'
+					url: '/pages/assistant/assistant'
 				});
 			}
 		}
