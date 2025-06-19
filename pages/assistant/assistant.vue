@@ -2,8 +2,8 @@
 	<view class="container">
 		<!-- 头部信息 -->
 		<view class="chat-header">
-			<text class="scene-name">{{sceneName}}</text>
-			<button class="end-btn" @click="endPractice">结束 </button>
+<!-- 			<text class="scene-name">{{sceneName}}</text>
+			<button class="end-btn" @click="endPractice">结束 </button> -->
 		</view>
 		
 		<!-- 聊天消息区域 -->
@@ -13,51 +13,73 @@
 					<image :src="msg.from === 'customer' ? `${apiBaseUrl}/uploads/static/robot-avatar.png` : `${apiBaseUrl}/uploads/static/user-avatar.png`"></image>
 				</view>
 				<view class="message-content">  
-					<!-- 语音消息部分 -->
-					<view class="voice-message-container">
-						<!-- 只渲染假语音条动画 -->
-						<template v-if="msg.isLoading">
-							<view class="voice-message loading-voice-bar" :style="{ width: calculateVoiceWidth(3) }">
-								<view class="voice-icon loading-voice-icon">
-									<span></span> 
-								</view>
-								<view class="voice-duration">...</view>
+					<!-- 语音消息部分（只有语音消息才显示） -->
+					<view v-if="msg.voiceUrl && !msg.isLoading" class="voice-message-container">
+						<view class="voice-message" :style="{ width: calculateVoiceWidth(msg.duration) }" @click="playVoice(msg.voiceUrl, index)">
+							<view class="voice-icon" :class="{ 'playing': msg.isPlaying }">
+								<span></span>
 							</view>
-						</template>
-						<template v-else>
-							<view class="voice-message" :style="{ width: calculateVoiceWidth(msg.duration) }" @click="playVoice(msg.voiceUrl, index)">
-								<view class="voice-icon" :class="{ 'playing': msg.isPlaying }">
-									<span></span>
-								</view>
-								<view class="voice-duration">{{msg.duration}}''</view>
-							</view>
-						</template>
+							<view class="voice-duration">{{msg.duration}}''</view>
+						</view>
 					</view>
 					
-					<!-- 文字内容部分（假语音条不显示） -->
-					<template v-if="!msg.isLoading">
-						<view class="text-content-container">
-							<!-- 文字转录 -->
-							<view class="text-transcript">
-								<text>{{msg.text}}</text>
+					<!-- 加载中的语音条 -->
+					<view v-if="msg.isLoading" class="voice-message-container">
+						<view class="voice-message loading-voice-bar" :style="{ width: calculateVoiceWidth(3) }">
+							<view class="voice-icon loading-voice-icon">
+								<span></span> 
 							</view>
-					
+							<view class="voice-duration">...</view>
 						</view>
-					</template>
+					</view>
+					
+					<!-- 文字内容部分 -->
+					<view v-if="!msg.isLoading" class="text-content-container">
+						<!-- 文字转录 -->
+						<view class="text-transcript">
+							<text>{{msg.text}}</text>
+						</view>
+					</view>
 				</view>
 			</view>
 		</scroll-view>
 		
-		<!-- 底部语音输入区域 -->
+		<!-- 底部输入区域 -->
 		<view class="input-area">
-			<button 
-				class="voice-btn" 
-				:class="{ 'recording': isRecording, 'disabled': isRobotLoading }"
-				@touchstart="handleTouchStart" 
-				@touchend="handleTouchEnd"
-				@touchcancel="handleTouchCancel">
-				{{ isRecording ? '松开发送' : (isRobotLoading ? '顾客正在输入...' : '按住说话') }}
-			</button>
+			<!-- 输入模式切换按钮 -->
+			<view class="input-mode-switch" @click="toggleInputMode">
+				<text class="mode-icon">{{ inputMode === 'voice' ?  '⌨️' : '🎤'}}</text>
+			</view>
+			
+			<!-- 文字输入模式 -->
+			<view v-if="inputMode === 'text'" class="text-input-container">
+				<input 
+					class="text-input" 
+					v-model="inputText" 
+					placeholder="输入消息..." 
+					:disabled="isRobotLoading"
+					@confirm="sendTextMessage"
+					confirm-type="send"
+				/>
+				<button 
+					class="send-btn" 
+					:class="{ 'disabled': !inputText.trim() || isRobotLoading }"
+					@click="sendTextMessage">
+					发送
+				</button>
+			</view>
+			
+			<!-- 语音输入模式 -->
+			<view v-else class="voice-input-container">
+				<button 
+					class="voice-btn" 
+					:class="{ 'recording': isRecording, 'disabled': isRobotLoading }"
+					@touchstart="handleTouchStart" 
+					@touchend="handleTouchEnd"
+					@touchcancel="handleTouchCancel">
+					{{ isRecording ? '松开发送' : (isRobotLoading ? '顾客正在输入...' : '按住说话') }}
+				</button>
+			</view>
 		</view>
 		
 		<!-- 录音提示浮层 -->
@@ -80,8 +102,7 @@
 				</view>
 				<view class="dialog-title new-dialog-title">你确定要结束这次练习吗？</view>
 				<view class="dialog-buttons new-dialog-buttons">
-					<button class="dialog-btn dialog-btn-primary" @click="endAndViewReport">结束对话，并查看测评报告</button>
-					<button class="dialog-btn dialog-btn-outline" @click="endOnly">结束对话</button>
+                    <button class="dialog-btn dialog-btn-outline" @click="endOnly">结束对话</button>
 				</view>
 			</view>
 		</view>
@@ -124,6 +145,8 @@
 				minVoiceWidth: 120, // 最小宽度（rpx）
 				maxVoiceWidth: 400, // 最大宽度（rpx）
 				
+				inputMode: 'voice', // 输入模式
+				inputText: '', // 文字输入框的值
 			}
 		},
 		created() {
@@ -431,7 +454,7 @@
 				this.uploadVoiceAndGetText(voicePath, durationInSeconds);
 			},
 			// 上传语音并获取文本转写
-			uploadVoiceAndGetText(voicePath, duration) {
+			async uploadVoiceAndGetText(voicePath, duration) {
 				//uni.showLoading({ title: '转写分析中...' });
 				const timestamp = new Date().getTime();
 				const randomStr = Math.random().toString(36).substring(2, 8);
@@ -803,6 +826,124 @@
 				return width + 'rpx';
 			},
 			 
+			// 切换输入模式
+			toggleInputMode() {
+				this.inputMode = this.inputMode === 'voice' ? 'text' : 'voice';
+			},
+			// 发送文本消息
+			async sendTextMessage() {
+				if (!this.inputText.trim() || this.isRobotLoading) {
+					return;
+				}
+				
+				const text = this.inputText.trim();
+				console.log('发送文本消息:', text);
+				
+				// 1. 立即添加用户消息到列表
+				const userMessageIndex = this.messages.length;
+				this.messages.push({
+					from: 'user',
+					text: text,
+					voiceUrl: '', // 文本消息没有语音
+					duration: '',
+					suggestion: '',
+					polishedText: '',
+					showSuggestion: false,
+					isPlaying: false,
+					suggestionLoading: false,
+					suggestionError: false,
+					isLoading: false,
+					timestamp: new Date().toISOString()
+				});
+				
+				// 清空输入框
+				this.inputText = '';
+				
+				// 滚动到底部
+				this.scrollToBottom();
+				
+				// 2. 立即插入假机器人语音条
+				this.messages.push({
+					from: 'customer',
+					text: '机器人正在回复...',
+					voiceUrl: '',
+					duration: '',
+					isPlaying: false,
+					isLoading: true,
+					timestamp: new Date().toISOString()
+				});
+				this.isRobotLoading = true;  // 设置机器人加载标志
+				
+				try {
+					// 3. 调用后端接口处理文本消息
+					const realMessages = this.messages.filter(msg => !(msg.from === 'customer' && msg.isLoading));
+					const response = await request({
+						url: '/assistant/send-text-message',
+						method: 'POST',
+						data: {
+							text: text,
+							sceneId: this.sceneId,
+							userId: this.userId,
+							conversationId: this.conversationId,
+							historyMessages: realMessages.map(msg => ({
+								from: msg.from,
+								text: msg.text
+							}))
+						},
+						header: {
+							'Content-Type': 'application/json'
+						}
+					});
+					
+					if (response.statusCode === 200 && response.data) {
+						// 4. 替换假机器人消息为真实消息
+						const idx = this.messages.findIndex(msg => msg.from === 'customer' && msg.isLoading);
+						const realMsg = {
+							from: 'customer',
+							text: response.data.text,
+							voiceUrl: response.data.voiceUrl,
+							duration: response.data.duration,
+							timestamp: new Date().toISOString(),
+							isPlaying: false
+						};
+						if (idx !== -1) {
+							this.$set(this.messages, idx, realMsg);
+						} else {
+							this.messages.push(realMsg);
+						}
+						
+						// 预下载机器人语音
+						if (response.data.voiceUrl) {
+							this.preDownloadVoice(response.data.voiceUrl);
+						}
+						
+						this.$nextTick(() => {
+							this.scrollToBottom();
+							this.isRobotLoading = false;
+						});
+					} else {
+						// 处理失败
+						const idx = this.messages.findIndex(msg => msg.from === 'customer' && msg.isLoading);
+						if (idx !== -1) this.messages.splice(idx, 1);
+						console.error('发送文本消息失败:', response);
+						uni.showToast({
+							title: '发送失败',
+							icon: 'none'
+						});
+						this.isRobotLoading = false;
+					}
+				} catch (error) {
+					// 处理异常
+					const idx = this.messages.findIndex(msg => msg.from === 'customer' && msg.isLoading);
+					if (idx !== -1) this.messages.splice(idx, 1);
+					console.error('发送文本消息失败:', error);
+					uni.showToast({
+						title: '发送失败',
+						icon: 'none'
+					});
+					this.isRobotLoading = false;
+				}
+			},
 		}
         
         
@@ -1000,12 +1141,21 @@
 		color: #333;
 	}
 	
+	.user .text-content-container {
+		background-color: #95EC69;
+		color: #333;
+	}
+	
 	.text-transcript {
 		font-size: 28rpx;
 		line-height: 1.4;
 	}
 	
 	.robot .text-transcript {
+		color: #333;
+	}
+	
+	.user .text-transcript {
 		color: #333;
 	}
 	
@@ -1070,21 +1220,102 @@
 		padding: 20rpx;
 		background-color: #fff;
 		border-top: 1rpx solid #eee;
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+	}
+	
+	.input-mode-switch {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 60rpx;
+		height: 60rpx;
+		border-radius: 50%;
+		background-color: #f2f2f2;
+		transition: all 0.3s ease;
+		flex-shrink: 0;
+	}
+	
+	.input-mode-switch:active {
+		background-color: #e0e0e0;
+		transform: scale(0.95);
+	}
+	
+	.mode-icon {
+		font-size: 28rpx;
+		color: #333;
+	}
+	
+	.text-input-container {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		background-color: #f8f8f8;
+		border-radius: 40rpx;
+		padding: 10rpx 20rpx;
+		gap: 20rpx;
+	}
+	
+	.text-input {
+		flex: 1;
+		font-size: 28rpx;
+		color: #333;
+		background: transparent;
+		border: none;
+		outline: none;
+		min-height: 60rpx;
+	}
+	
+	.send-btn {
+		font-size: 28rpx;
+		color: #fff;
+		background-color: #10b981;
+		padding: 15rpx 30rpx;
+		border-radius: 40rpx;
+		border: none;
+		transition: all 0.3s ease;
+		flex-shrink: 0;
+		white-space: nowrap;
+	}
+	
+	.send-btn:active {
+		transform: scale(0.95);
+	}
+	
+	.send-btn.disabled {
+		background-color: #ccc;
+		color: #999;
+		pointer-events: none;
+	}
+	
+	.voice-input-container {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 	
 	.voice-btn {
 		width: 100%;
-		height: 90rpx;
-		line-height: 90rpx;
+		height: 80rpx;
+		line-height: 80rpx;
 		text-align: center;
-		background-color: #f2f2f2;
+		background-color: #f8f8f8;
 		color: #333;
-		border-radius: 45rpx;
+		border-radius: 40rpx;
 		font-size: 30rpx;
+		border: none;
+		transition: all 0.3s ease;
 	}
 	
-	.recording {
-		background-color: #e0e0e0;
+	.voice-btn.recording {
+		background-color: #ff4d4f;
+		color: #fff;
+	}
+	
+	.voice-btn:active {
+		transform: scale(0.98);
 	}
 	
 	/* 添加禁用状态样式 */

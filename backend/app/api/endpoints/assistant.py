@@ -93,6 +93,42 @@ async def speech_to_text(
         )
 
 
+# 新增：发送文本消息端点
+@router.post("/send-text-message")
+async def send_text_message(
+        request: Dict[str, Any],
+        token: dict = Depends(get_current_user),
+        conversation_service=Depends(get_assistant_service)
+):
+    """处理用户发送的文本消息"""
+    try:
+        text = request.get("text", "")
+        scene_id = request.get("sceneId", 0)
+        user_id = request.get("userId")
+        conversation_id = request.get("conversationId")
+        history_messages = request.get("historyMessages", [])  # 新增历史消息参数
+        
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="消息内容不能为空")
+            
+        if user_id and str(token["sub"]) != user_id:
+            raise HTTPException(status_code=403, detail="Unauthorized access")
+
+        # 调用服务处理文本消息
+        result = conversation_service.process_text_message(
+            text,
+            scene_id,
+            user_id,
+            conversation_id,
+            history_messages  # 传递历史消息
+        )
+        return result
+    except Exception as e:
+        logger.error(f"处理文本消息失败: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # 修改现有的 analyze 端点，添加练习ID
 @router.post("/analyze")
 async def analyze_message(
