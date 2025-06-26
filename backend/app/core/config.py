@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
     # 基础URL配置
-    #BASE_URL: str = "http://localhost:8000"  # 开发环境
-    BASE_URL: str = "https://ai.dl-dd.com"  # 生产环境
+    BASE_URL: str = "http://localhost:8000"  # 开发环境
+    #BASE_URL: str = "https://ai.dl-dd.com"  # 生产环境
 
     # 讯飞API配置
     XUNFEI_APP_ID: str = "5f30a0b3"
@@ -26,12 +26,15 @@ class Settings(BaseSettings):
     STATIC_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static")
 
     BASE_DIR : str= os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    APPID : str = 'wx7a2daa1f58be194c'
+    APPID : str = 'wx44fcf832b42943fb'  #wx7a2daa1f58be194c      qiye wx44fcf832b42943fb
+    APPKEY: str = 'a962d2e412e125b3228f75a6ff552304'#d2ac10bec34434ee636c81db6d0d0167    QIYE a962d2e412e125b3228f75a6ff552304
     # 上传目录
     UPLOAD_DIR : str= os.path.join(BASE_DIR, "uploads")
     file_path_tts : str= os.path.join(UPLOAD_DIR, 'tts')
     file_path_voice: str = os.path.join(UPLOAD_DIR, 'voice')
     voice_url: str = f"{BASE_URL}/uploads/voice"
+
+    html_path : str= os.path.join(UPLOAD_DIR,'static/chat.html')
     # 其他目录
     STATIC_DIR : str= os.path.join(BASE_DIR, "static")
     LOG_DIR : str= os.path.join(BASE_DIR, "logs")

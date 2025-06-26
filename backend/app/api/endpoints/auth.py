@@ -39,7 +39,7 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         url = f"https://api.weixin.qq.com/sns/jscode2session"
         params = {
             "appid": settings.APPID,
-            "secret": "d2ac10bec34434ee636c81db6d0d0167",
+            "secret": settings.APPKEY,
             "js_code": login_data.code,
             "grant_type": "authorization_code"
         }

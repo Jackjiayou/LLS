@@ -14,6 +14,7 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(conversation.router, prefix="/conversation", tags=["conversation"])
 app.include_router(practice_info.router, prefix="/practice", tags=["practice"])
 app.include_router(assistant.router, prefix="/assistant", tags=["assistant"])
+app.include_router(assistant.router, prefix="/agent", tags=["agent"])
 # os.makedirs(settings.file_path_voice, exist_ok=True)
 # os.makedirs(settings.file_path_tts, exist_ok=True)
 

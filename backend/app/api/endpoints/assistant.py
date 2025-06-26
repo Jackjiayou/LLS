@@ -24,9 +24,13 @@ from app.schemas.practice import (
     EndPracticeRequest,
     PracticeHistoryResponse
 )
-
+from fastapi.responses import FileResponse
 router = APIRouter()
 
+@router.get("/chat-page")
+def get_chat_page():
+    html_path = settings.html_path
+    return FileResponse(html_path)
 
 # 修改现有的 get_robot_message 端点，添加练习ID
 @router.get("/get-robot-message")
@@ -98,7 +102,7 @@ async def speech_to_text(
 async def send_text_message(
         request: Dict[str, Any],
         token: dict = Depends(get_current_user),
-        conversation_service=Depends(get_assistant_service)
+        assistant_service=Depends(get_assistant_service)
 ):
     """处理用户发送的文本消息"""
     try:
@@ -115,7 +119,7 @@ async def send_text_message(
             raise HTTPException(status_code=403, detail="Unauthorized access")
 
         # 调用服务处理文本消息
-        result = conversation_service.process_text_message(
+        result = assistant_service.process_text_message(
             text,
             scene_id,
             user_id,

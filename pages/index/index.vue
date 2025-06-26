@@ -37,10 +37,11 @@
 				<image class="func-icon" :src="`${apiBaseUrl}/uploads/static/record.png`"></image>
 				<text class="func-label">练习记录</text>
 			</view>
-			<view class="func-item" @click="goToDigitalHuman">
-				<image class="func-icon" :src="`${apiBaseUrl}/uploads/static/digital-human.png`"></image>
-				<text class="func-label">珍迪助手</text>
-			</view>
+<!--            <view class="func-item" @click="goToDigitalHuman">
+                <image class="func-icon" :src="`${apiBaseUrl}/uploads/static/digital-human.png`"></image>
+                <text class="func-label">珍迪助手</text>
+            </view> -->
+
 		</view>
 		<!-- 练习场景卡片 -->
 		<view class="card scene-card">
@@ -117,6 +118,14 @@
 			this.checkLoginStatus();
 		},
 		methods: {
+            		 
+            // goToDigitalHuman() {
+            //     // 跳转到珍迪助手页面
+            //     uni.navigateTo({
+            //         url: '/pages/assistant/assistant'
+            //     });
+            //     }
+
             async getPracticeStats() {
                   try {
                     const token = uni.getStorageSync('token');
@@ -259,12 +268,6 @@
 				uni.showToast({
 					title: '练习记录功能开发中',
 					icon: 'none'
-				});
-			},
-			goToDigitalHuman() {
-				// 跳转到珍迪助手页面
-				uni.navigateTo({
-					url: '/pages/assistant/assistant'
 				});
 			}
 		}
