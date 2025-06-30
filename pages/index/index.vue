@@ -10,9 +10,11 @@
 		</view>
 		<!-- 用户信息卡片 -->
 		<view class="card user-card">
-			<image class="avatar" :src="userInfo.avatar"></image>
+            <!-- <image class="avatar" :src="`${apiBaseUrl}/uploads/static/user-avatar.png`" ></image> -->
+            <!-- <text class="username">李经理</text> -->
+            <image class="avatar" :src="userInfo.avatar"></image>
 			<text class="username">{{userInfo.name}}</text>
-			<view class="user-stats">
+            <view class="user-stats">
 				<view class="stat-item">
 					<text class="stat-value">{{stats.practice_count}}</text>
 					<text class="stat-label">练习次数</text>
@@ -76,28 +78,28 @@
 				scenes: [
                     {
                     	id: 0,
-                    	name: '核苷酸产品介绍',
-                    	description: '赢得客户对核苷酸产品的认可',
+                    	name: '营销沟通',
+                    	description: '赢得客户对产品的认可',
                     	icon: ''
                     },
 					{
 						id: 1,
-						name: '新客户开发',
+						name: '商务沟通',
 						description: '针对首次接触的潜在客户，学习如何有效地介绍产品和建立信任',
 						icon: ''
 					},
 					{
 						id: 2,
-						name: '异议处理',
+						name: '商务谈判',
 						description: '学习如何面对客户提出的各种异议，并有效地进行回应',
 						icon: ''
 					},
-					{
-						id: 3,
-						name: '产品推荐',
-						description: '根据客户需求，推荐最合适的产品，提高销售成功率',
-						icon: ''
-					},
+					// {
+					// 	id: 3,
+					// 	name: '产品推荐',
+					// 	description: '根据客户需求，推荐最合适的产品，提高销售成功率',
+					// 	icon: ''
+					// },
 					// {
 					// 	id: 4,
 					// 	name: '成交技巧',

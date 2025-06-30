@@ -12,8 +12,8 @@ export default {
   },
   onLoad() {
     //this.url = config.apiBaseUrl + '/assistant/chat-page'
-    this.url ='https://dh.dizhijia.cn'
-    //this.url = 'https://dify.dizhijia.cn/chat/aXq8v7OxFYQazTmy'//config.apiBaseUrl //+ '/assistant/chat-page'
+    //this.url ='https://dh.dizhijia.cn'
+    this.url = 'https://dify.dizhijia.cn/chat/i5qWaOxq1ESuQJ9v'//config.apiBaseUrl //+ '/assistant/chat-page'
   }
 }
 </script> 

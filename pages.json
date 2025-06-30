@@ -1,5 +1,5 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [
 		{
 			"path": "pages/login/login",
 			"style": {
@@ -50,11 +50,24 @@
 			}
 		},
 		{
+			"path": "pages/create-digital-human/create-digital-human",
+			"style": {
+				"navigationBarTitleText": "制作数字人"
+			}
+		},
+		{
 			"path": "pages/webview/webview",
 			"style": {
 				"navigationBarTitleText": "AI顾问"
 			}
-		}
+		},
+        {
+            "path" : "pages/digital_webview/digital_webview",
+            "style" : 
+            {
+                "navigationBarTitleText" : "实时数字人"
+            }
+        }
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",

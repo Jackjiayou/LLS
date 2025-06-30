@@ -241,7 +241,7 @@ class ConversationService:
                     break
 
             # 根据场景ID选择不同的分析策略
-            db_path = settings.vec_db_nucleotide if scene_id == 0 else settings.vec_db_production
+            db_path = settings.vec_db_production if scene_id == 0 else settings.vec_db_nucleotide
 
             # 调用向量搜索获取相关上下文
             result_msg = vector_search(query=f"{last_customer_text}", db_path=db_path, k=3)

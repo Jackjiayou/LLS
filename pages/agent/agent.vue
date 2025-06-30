@@ -36,7 +36,7 @@
 				tools: [
 					{
 						id: 1,
-						title: '珍奥AI顾问',
+						title: '智问助手',
 						description: '为你解答接待顾客过程中遇到的问题。',
 						icon: `${config.apiBaseUrl}/uploads/static/assistant.png`,
 						url: '/pages/assistant/assistant'
