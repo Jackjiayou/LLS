@@ -40,7 +40,7 @@ async def get_practice_stats(
 
             return {
                 "practice_count": practice_count,
-                "total_duration": round(total_duration, 2)+0.01,  # 保留一位小数
+                "total_duration": round(total_duration, 2),  # 保留一位小数
                 "scenario_count": scenario_count
             }
 

@@ -4,13 +4,17 @@ from app.db.database import get_db
 from app.core.auth import get_current_user
 from app.core.logger import logger, log_request, log_response, log_error
 from app.models.digital_human import DigitalHuman, DigitalHumanFile
-from app.schemas.digital_human import DigitalHumanCreate, DigitalHumanResponse
+from app.schemas.digital_human import DigitalHumanCreateRequest
+
+from  app.services.digital_human_service import  process_video
+
 from app.core.config import settings
 import os
 import uuid
 from datetime import datetime
 from typing import Optional
 import shutil
+
 
 router = APIRouter()
 
@@ -31,25 +35,21 @@ def is_allowed_file(filename: str, allowed_extensions: set) -> bool:
     """检查文件类型是否允许"""
     return get_file_extension(filename) in allowed_extensions
 
-def save_uploaded_file(file: UploadFile, file_type: str) -> tuple[str, str]:
-    """保存上传的文件"""
-    # 生成唯一文件名
+def save_uploaded_file(file: UploadFile, file_type: str, user_id: str) -> tuple[str, str]:
+    """保存上传的文件到以用户ID为子目录的路径"""
     file_extension = get_file_extension(file.filename)
     unique_filename = f"{uuid.uuid4()}{file_extension}"
-    
-    # 创建类型子目录
-    type_dir = os.path.join(UPLOAD_DIR, file_type)
+
+    # 创建类型+用户ID子目录
+    type_dir = os.path.join(UPLOAD_DIR, file_type, user_id)
     os.makedirs(type_dir, exist_ok=True)
-    
-    # 文件保存路径
+
     file_path = os.path.join(type_dir, unique_filename)
-    
-    # 保存文件
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    
+
     # 返回相对路径和完整路径
-    relative_path = f"{file_type}/{unique_filename}"
+    relative_path = f"digital_human/{file_type}/{user_id}/{unique_filename}"
     return relative_path, file_path
 
 @router.post("/upload-image")
@@ -81,7 +81,7 @@ async def upload_image(
             )
         
         # 保存文件
-        relative_path, file_path = save_uploaded_file(file, "images")
+        relative_path, file_path = save_uploaded_file(file, "images", current_user["sub"])
         
         # 保存到数据库
         db_file = DigitalHumanFile(
@@ -153,7 +153,7 @@ async def upload_video(
             )
         
         # 保存文件
-        relative_path, file_path = save_uploaded_file(file, "videos")
+        relative_path, file_path = save_uploaded_file(file, "videos", current_user["sub"])
         
         # 保存到数据库
         db_file = DigitalHumanFile(
@@ -225,7 +225,7 @@ async def upload_audio(
             )
         
         # 保存文件
-        relative_path, file_path = save_uploaded_file(file, "audios")
+        relative_path, file_path = save_uploaded_file(file, "audios", current_user["sub"])
         
         # 保存到数据库
         db_file = DigitalHumanFile(
@@ -270,28 +270,28 @@ async def upload_audio(
 
 @router.post("/create")
 async def create_digital_human(
-    image_id: Optional[str] = Form(None),
-    video_id: Optional[str] = Form(None),
-    text_content: Optional[str] = Form(None),
-    audio_id: Optional[str] = Form(None),
+    req: DigitalHumanCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """创建数字人"""
     try:
+        user_id =  current_user["sub"]
+        vidoe_path = ''
+        audio_path = ''
+        video_id = req.video_id
+        audio_id = req.audio_id
         log_request({
             "endpoint": "/create",
             "user_id": current_user["sub"],
             "data": {
-                "image_id": image_id,
                 "video_id": video_id,
-                "text_content": text_content,
                 "audio_id": audio_id
             }
         })
         
         # 验证至少有一个素材
-        if not any([image_id, video_id, text_content, audio_id]):
+        if not any([video_id, audio_id]):
             raise HTTPException(
                 status_code=400,
                 detail="请至少上传一个素材"
@@ -299,15 +299,6 @@ async def create_digital_human(
         
         # 验证文件是否存在且属于当前用户
         files = []
-        if image_id:
-            image_file = db.query(DigitalHumanFile).filter(
-                DigitalHumanFile.id == image_id,
-                DigitalHumanFile.user_id == current_user["sub"],
-                DigitalHumanFile.file_type == "image"
-            ).first()
-            if not image_file:
-                raise HTTPException(status_code=404, detail="图片文件不存在")
-            files.append(image_file)
         
         if video_id:
             video_file = db.query(DigitalHumanFile).filter(
@@ -318,6 +309,8 @@ async def create_digital_human(
             if not video_file:
                 raise HTTPException(status_code=404, detail="视频文件不存在")
             files.append(video_file)
+            vidoe_path = os.path.join(settings.UPLOAD_DIR,video_file.file_path)
+
         
         if audio_id:
             audio_file = db.query(DigitalHumanFile).filter(
@@ -328,14 +321,13 @@ async def create_digital_human(
             if not audio_file:
                 raise HTTPException(status_code=404, detail="音频文件不存在")
             files.append(audio_file)
+            audio_path =  os.path.join(settings.UPLOAD_DIR,audio_file.file_path)
         
         # 创建数字人记录
         digital_human = DigitalHuman(
             user_id=current_user["sub"],
             name=f"数字人_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
-            image_file_id=image_id,
             video_file_id=video_id,
-            text_content=text_content,
             audio_file_id=audio_id,
             status="processing",  # processing, completed, failed
             create_time=datetime.utcnow()
@@ -343,16 +335,21 @@ async def create_digital_human(
         db.add(digital_human)
         db.commit()
         db.refresh(digital_human)
-        
-        # 这里可以添加实际的数字人生成逻辑
-        # 例如调用AI服务进行数字人生成
+
+
+        api_url = "http://117.50.194.151:8000"
+        #生成数字人视频
+        generate_video_path ,url_path= process_video(user_id,vidoe_path,audio_path,api_url)
+
         # 暂时设置为完成状态
         digital_human.status = "completed"
+        digital_human.generate_video_path = generate_video_path
         db.commit()
         
         response_data = {
             "success": True,
             "digital_human_id": str(digital_human.id),
+            "generate_video_path": str(url_path),
             "message": "数字人创建成功"
         }
         
