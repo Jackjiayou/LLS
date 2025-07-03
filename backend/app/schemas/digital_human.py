@@ -2,6 +2,10 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
 
+class DigitalHumanCreateRequest(BaseModel):
+    video_id: Optional[str] = None
+    audio_id: Optional[str] = None
+
 class DigitalHumanFileBase(BaseModel):
     """数字人文件基础模型"""
     file_type: str

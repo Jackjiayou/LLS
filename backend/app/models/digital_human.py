@@ -60,6 +60,7 @@ class DigitalHuman(Base):
     image_file_id = Column(String(36), ForeignKey("digital_human_files.id"), nullable=True)
     video_file_id = Column(String(36), ForeignKey("digital_human_files.id"), nullable=True)
     audio_file_id = Column(String(36), ForeignKey("digital_human_files.id"), nullable=True)
+    generate_video_path = Column(String(100), nullable=True)
     text_content = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="processing")  # processing, completed, failed
     create_time = Column(DateTime, default=datetime.utcnow)
