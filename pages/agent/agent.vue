@@ -39,14 +39,16 @@
 						title: '智问助手',
 						description: '为你解答接待顾客过程中遇到的问题。',
 						icon: `${config.apiBaseUrl}/uploads/static/assistant.png`,
-						url: '/pages/assistant/assistant'
+						url: '/pages/assistant/assistant',
+                        h5Url: 'https://dify.dizhijia.cn/chat/i5qWaOxq1ESuQJ9v'
 					},
 					{
 						id: 2,
 						title: '写个邀约短信',
 						description: '生日、售后、节日、活动等邀约信息撰写。',
 						icon: `${config.apiBaseUrl}/uploads/static/birthday.png`,
-						url: ''
+						url: '',
+                        h5Url: 'https://dify.dizhijia.cn/workflow/T6INFmZIORXD0X0a'
 					},
 					{
 						id: 3,
@@ -85,16 +87,16 @@
 				});
 			},
 			goToTool(tool) {
-				if (tool.id === 1) {
-					uni.navigateTo({
-						url: '/pages/webview/webview'
-					});
-				} else {
-					uni.showToast({
-						title: '功能开发中，敬请期待',
-						icon: 'none'
-					});
-				}
+			  if (tool.h5Url) {
+			    uni.navigateTo({
+			      url: `/pages/webview/webview?url=${encodeURIComponent(tool.h5Url)}`
+			    });
+			  } else {
+			    uni.showToast({
+			      title: '功能开发中，敬请期待',
+			      icon: 'none'
+			    });
+			  }
 			}
 		}
 	}
