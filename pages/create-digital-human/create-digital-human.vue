@@ -96,7 +96,10 @@
 				isRecording: false,
 				recordDuration: 0,
 				recordTimer: null,
-				generateVideoPath: ''
+				generateVideoPath: '',
+                task_id: '',
+                digitalHumanId: '', // 添加数字人ID
+                pollingTimer: null  // 添加轮询定时器
 			};
 		},
 		computed: {
@@ -111,6 +114,10 @@
 				return false;
 				// #endif
 			}
+		},
+		// 页面销毁时清理定时器
+		beforeDestroy() {
+			this.stopPolling();
 		},
 		methods: {
 			goBack() {
@@ -270,18 +277,15 @@
 			// 开始制作数字人
 			startCreation() {
 				if (this.isCreating) return;
-				
+
 				this.isCreating = true;
-				uni.showLoading({
-					title: '制作中...'
-				});
-				
+
 				// 准备提交数据
 				const submitData = {
 					video_id: this.videoFile?.id,
 					audio_id: this.audioFile?.id
 				};
-				
+
 				uni.request({
 					url: config.apiBaseUrl + '/api/digital-human/create',
 					method: 'POST',
@@ -289,18 +293,15 @@
 						'Authorization': `Bearer ${uni.getStorageSync('token')}`,
 						'Content-Type': 'application/json'
 					},
-                    timeout:180000,
 					data: submitData,
 					success: (res) => {
-						uni.hideLoading();
 						this.isCreating = false;
-						
+
 						if (res.data.success) {
-							this.generateVideoPath = res.data.generate_video_path;
-							uni.showToast({
-								title: '制作成功',
-								icon: 'success'
-							});
+							// 保存数字人ID，开始轮询状态
+							this.digitalHumanId = res.data.digital_human_id;
+							this.startPolling(); // 这里会显示 loading
+							// 不要在这里 showToast
 						} else {
 							uni.showToast({
 								title: res.data.message || '制作失败',
@@ -309,7 +310,6 @@
 						}
 					},
 					fail: (err) => {
-						uni.hideLoading();
 						this.isCreating = false;
 						uni.showToast({
 							title: '制作失败',
@@ -319,6 +319,76 @@
 					}
 				});
 			},
+
+            // 轮询方法
+            startPolling() {
+                // 开始轮询时显示loading
+                uni.showLoading({
+                    title: '制作中,约两分钟'
+                });
+
+                this.pollingTimer = setInterval(() => {
+                    this.checkStatus();
+                }, 8000); // 每8秒检查一次
+            },
+
+            checkStatus() {
+                if (!this.digitalHumanId) return;
+
+                uni.request({
+                    url: config.apiBaseUrl + `/api/digital-human/status/${this.digitalHumanId}`,
+                    method: 'GET',
+                    header: {
+                        'Authorization': `Bearer ${uni.getStorageSync('token')}`
+                    },
+                    success: (res) => {
+                        if (res.data.success) {
+                            const statusData = res.data.data;
+
+                            if (statusData.status === 'completed') {
+                                // 制作完成，显示视频
+                                this.generateVideoPath = statusData.generate_video_path;
+                                this.stopPolling();
+
+                                // 隐藏loading并显示完成提示
+                                uni.hideLoading();
+                                uni.showToast({
+                                    title: '制作完成！',
+                                    icon: 'success'
+                                });
+                            } else if (statusData.status === 'failed') {
+                                // 制作失败
+                                this.stopPolling();
+
+                                // 隐藏loading并显示失败提示
+                                uni.hideLoading();
+                                uni.showToast({
+                                    title: '制作失败',
+                                    icon: 'none'
+                                });
+                            }
+                            // 如果还是 processing，继续轮询，不隐藏loading
+                        }
+                    },
+                    fail: (err) => {
+                        console.error('查询状态失败:', err);
+                        // 查询失败时也停止轮询
+                        this.stopPolling();
+                        uni.hideLoading();
+                        uni.showToast({
+                            title: '查询状态失败',
+                            icon: 'none'
+                        });
+                    }
+                });
+            },
+
+            stopPolling() {
+                if (this.pollingTimer) {
+                    clearInterval(this.pollingTimer);
+                    this.pollingTimer = null;
+                }
+            },
 			stopRecording() {
 				// #ifdef MP-WEIXIN
 				const recorderManager = uni.getRecorderManager();

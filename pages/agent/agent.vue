@@ -55,21 +55,24 @@
 						title: '小红书爆款生成器',
 						description: '一键生成爆款文案，带你勇闯自媒体，你的文章在人海中脱颖而出。',
 						icon: `${config.apiBaseUrl}/uploads/static/red.png`,
-						url: ''
+						url: '',
+                        h5Url:'https://dify.dizhijia.cn/workflow/NQxmRGHDaL53T8bs'
 					},
 					{
 						id: 4,
 						title: '发朋友圈营销文案',
 						description: '帮你打造高转化率的朋友圈营销文案，你的每一条朋友圈都变成销售利器。',
 						icon: `${config.apiBaseUrl}/uploads/static/friend.png`,
-						url: ''
+						url: '',
+                        h5Url:'https://dify.dizhijia.cn/workflow/XDxQnETguXo57LBn'
 					},
 					{
 						id: 5,
 						title: '为产品写小红书营销文案',
 						description: '轻松撰写出吸引人的小红书营销文案。',
 						icon: `${config.apiBaseUrl}/uploads/static/redbook.png`,
-						url: ''
+						url: '',
+                        h5Url:'https://dify.dizhijia.cn/workflow/NQxmRGHDaL53T8bs'
 					}
 				]
 			};
