@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
     # 基础URL配置
-    BASE_URL: str = "http://localhost:8000"  # 开发环境
-    #BASE_URL: str = "https://ai.dl-dd.com"  # 生产环境
+    #BASE_URL: str = "http://localhost:8000"  # 开发环境
+    BASE_URL: str = "https://ai.dl-dd.com"  # 生产环境
 
     # 讯飞API配置
     XUNFEI_APP_ID: str = "5f30a0b3"
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     file_path_tts : str= os.path.join(UPLOAD_DIR, 'tts')
     file_path_voice: str = os.path.join(UPLOAD_DIR, 'voice')
     voice_url: str = f"{BASE_URL}/uploads/voice"
-
+    uploads_url: str = f"{BASE_URL}/uploads/"
     html_path : str= os.path.join(UPLOAD_DIR,'static/chat.html')
     # 其他目录
     STATIC_DIR : str= os.path.join(BASE_DIR, "static")

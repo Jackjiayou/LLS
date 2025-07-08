@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form,Request
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.core.auth import get_current_user
@@ -6,7 +6,7 @@ from app.core.logger import logger, log_request, log_response, log_error
 from app.models.digital_human import DigitalHuman, DigitalHumanFile
 from app.schemas.digital_human import DigitalHumanCreateRequest
 
-from  app.services.digital_human_service import  process_video
+from  app.services.digital_human_service import  process_video,process_video_new
 
 from app.core.config import settings
 import os
@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 import shutil
-
+import traceback
 
 router = APIRouter()
 
@@ -309,7 +309,8 @@ async def create_digital_human(
             if not video_file:
                 raise HTTPException(status_code=404, detail="视频文件不存在")
             files.append(video_file)
-            vidoe_path = os.path.join(settings.UPLOAD_DIR,video_file.file_path)
+            #vidoe_path = os.path.join(settings.UPLOAD_DIR,video_file.file_path)
+            vidoe_path = f"{settings.uploads_url}{video_file.file_path}"
 
         
         if audio_id:
@@ -321,9 +322,9 @@ async def create_digital_human(
             if not audio_file:
                 raise HTTPException(status_code=404, detail="音频文件不存在")
             files.append(audio_file)
-            audio_path =  os.path.join(settings.UPLOAD_DIR,audio_file.file_path)
-        
-        # 创建数字人记录
+            #audio_path =  os.path.join(settings.UPLOAD_DIR,audio_file.file_path)
+            audio_path = f"{settings.uploads_url}{audio_file.file_path}"
+        # 创建数字人记录m
         digital_human = DigitalHuman(
             user_id=current_user["sub"],
             name=f"数字人_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -337,42 +338,121 @@ async def create_digital_human(
         db.refresh(digital_human)
 
 
-        api_url = "http://117.50.194.151:8000"
-        #生成数字人视频
-        generate_video_path ,url_path= process_video(user_id,vidoe_path,audio_path,api_url)
+        # 调用第三方接口获取任务ID
+        try:
+            task_id = 624129
+            task_id = process_video_new(user_id, vidoe_path, audio_path)
 
-        # 暂时设置为完成状态
-        digital_human.status = "completed"
-        digital_human.generate_video_path = generate_video_path
-        db.commit()
-        
-        response_data = {
-            "success": True,
-            "digital_human_id": str(digital_human.id),
-            "generate_video_path": str(url_path),
-            "message": "数字人创建成功"
-        }
+            # 更新数字人记录，保存任务ID
+            digital_human.task_id = task_id
+            db.commit()
+            
+            response_data = {
+                "success": True,
+                "digital_human_id": str(digital_human.id),
+                "task_id": task_id,
+                "message": "数字人创建成功，正在处理中"
+            }
+            
+        except Exception as e:
+            # 如果调用第三方接口失败，更新状态为失败
+            digital_human.status = "failed"
+            db.commit()
+            raise HTTPException(status_code=500, detail=f"调用第三方接口失败: {str(e)}")
         
         log_response({
             "endpoint": "/create",
             "status": "success",
-            "digital_human_id": str(digital_human.id)
+            "digital_human_id": str(digital_human.id),
+            "task_id": task_id
         })
         
         return response_data
+
+    except HTTPException:
+        traceback.print_exc()
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        log_error({
+            "endpoint": "/create",
+            "error": traceback.format_exc(),
+            "user_id": current_user["sub"]
+        })
+        raise HTTPException(status_code=500, detail=f"调用第三方接口失败: {str(e)}")
+
+@router.post("/create_digital_human_callback")
+async def create_digital_human_callback(
+request: Request
+):
+    """创建数字人回调接口 - 第三方接口处理完成后调用"""
+    try:
+        data = await request.json()
+        log_request({
+            "create_digital_human_callback data": data,
+        })
+
+        print("✅ 原始回调数据：", data)
+        
+        # 解析回调数据
+        if data.get('code') == 200 and data.get('data'):
+            callback_data = data['data']
+            video_task_id = callback_data.get('video_task_id')
+            video_url = callback_data.get('videoUrl')
+            cover_url = callback_data.get('coverUrl')
+            duration = callback_data.get('duration')
+            bill_id = callback_data.get('bill_id')
+            
+            print(f"✅ 解析回调数据：task_id={video_task_id}, video_url={video_url}")
+            
+            # 根据task_id查找对应的数字人记录
+            db = next(get_db())
+            digital_human = db.query(DigitalHuman).filter(
+                DigitalHuman.task_id == str(video_task_id)
+            ).first()
+            
+            if digital_human:
+                # 更新数字人状态和视频路径
+                digital_human.status = "completed"
+                digital_human.generate_video_path = video_url
+                digital_human.update_time = datetime.utcnow()
+                db.commit()
+                
+                print(f"✅ 数字人 {digital_human.id} 处理完成，视频地址: {video_url}")
+                
+                # 记录成功日志
+                log_response({
+                    "endpoint": "/create_digital_human_callback",
+                    "status": "success",
+                    "digital_human_id": str(digital_human.id),
+                    "video_url": video_url
+                })
+                
+            else:
+                print(f"❌ 未找到任务ID为 {video_task_id} 的数字人记录")
+                log_error({
+                    "endpoint": "/create_digital_human_callback",
+                    "error": f"未找到任务ID为 {video_task_id} 的数字人记录"
+                })
+        else:
+            print(f"❌ 回调数据格式错误: {data}")
+            log_error({
+                "endpoint": "/create_digital_human_callback",
+                "error": f"回调数据格式错误: {data}"
+            })
+        
+        return {"success": True, "message": "回调处理完成"}
         
     except HTTPException:
         raise
     except Exception as e:
         log_error({
-            "endpoint": "/create",
-            "error": str(e),
-            "user_id": current_user["sub"]
+            "endpoint": "/create_digital_human_callback",
+            "error": str(e)
         })
-        raise HTTPException(
-            status_code=500,
-            detail="数字人创建失败"
-        )
+        raise HTTPException(status_code=500, detail="回调处理失败")
+
+
 
 @router.get("/list")
 async def get_digital_human_list(
@@ -452,4 +532,49 @@ async def get_digital_human_detail(
         raise HTTPException(
             status_code=500,
             detail="获取数字人详情失败"
+        ) 
+
+@router.get("/status/{digital_human_id}")
+async def get_digital_human_status(
+    digital_human_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取数字人处理状态 - 用于前端轮询"""
+    try:
+        # 查询数字人记录
+        #digital_human_id ='a4e8e602-f985-45d8-aba9-23c752351580'# "9f8d3096-1a8e-4c65-9f68-1f85c431d8a4"
+        digital_human = db.query(DigitalHuman).filter(
+            DigitalHuman.id == digital_human_id,
+            DigitalHuman.user_id == current_user["sub"]
+        ).first()
+        
+        if not digital_human:
+            raise HTTPException(status_code=404, detail="数字人不存在")
+        
+        # 返回状态信息
+        return {
+            "success": True,
+            "data": {
+                "id": str(digital_human.id),
+                "name": digital_human.name,
+                "status": digital_human.status,  # processing, completed, failed
+                "task_id": digital_human.task_id,
+                "generate_video_path": digital_human.generate_video_path,  # 完成时才有值
+                "create_time": digital_human.create_time.isoformat(),
+                "update_time": digital_human.update_time.isoformat()
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error({
+            "endpoint": f"/status/{digital_human_id}",
+            "error": str(e),
+            "user_id": current_user["sub"]
+        })
+        raise HTTPException(
+            status_code=500,
+            detail="获取数字人状态失败"
         ) 

@@ -11,6 +11,7 @@ from app.core.logger import logger
 from fastapi import FastAPI, HTTPException
 import  requests
 import  time
+import traceback
 
 class DigitalHumanService:
     def __init__(self):
@@ -78,6 +79,56 @@ def process_video(user_id,video_path, audio_path, api_url="http://117.50.194.151
             break
 
         time.sleep(5)  # 每5秒检查一次状态
+
+def process_video_new(user_id,video_path, audio_path):
+    """
+    处理视频和音频文件
+
+    参数:
+        video_path: 视频文件路径（MP4格式）
+        audio_path: 音频文件路径（WAV格式）
+        api_url: API服务器地址
+    """
+    TOKEN = 'Bearer 7B00263DA1C457604E9405EA6CC4DD50.1ED18A77A17E099B6D5CDE4FA56714C3.YTECHBIL'
+
+    # 请求地址
+    url = 'https://api.yidevs.com/app/human/human/Musetalk/direct'
+
+    # 请求头
+    headers = {
+        'Authorization': TOKEN,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    # 请求参数
+    payload = {
+        "callback_url": "https://ai.dl-dd.com/api/digital-human/create_digital_human_callback",
+        "video_url": video_path,
+        "audio_url": audio_path
+    }
+    #https://a8b7-113-226-47-201.ngrok-free.app/
+    # 发送 POST 请求
+    print(payload)
+    logger.info(f'payload:{payload}')
+    response = requests.post(url, json=payload, headers=headers)
+
+    # 打印返回结果
+    logger.info(f'response:{response.json()}')
+    print(response.status_code )
+    if response.status_code == 200:
+        result = response.json()
+        print("响应成功:")
+        # 返回任务ID
+        return result['data']['video_task_id']
+    else:
+        print("请求失败，状态码:", response.status_code)
+        print("返回内容:", response.text)
+        raise HTTPException(status_code=500, detail=f"生成数字人失败: {str(response.text)}")
+
+
+
+
 
 
 #

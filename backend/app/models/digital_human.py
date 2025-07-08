@@ -65,7 +65,8 @@ class DigitalHuman(Base):
     status = Column(String(20), nullable=False, default="processing")  # processing, completed, failed
     create_time = Column(DateTime, default=datetime.utcnow)
     update_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    task_id = Column(String(100), nullable=True)  # 添加任务ID字段
+
     # 关联关系
     image_file = relationship("DigitalHumanFile", foreign_keys=[image_file_id], back_populates="digital_humans")
     video_file = relationship("DigitalHumanFile", foreign_keys=[video_file_id], back_populates="video_digital_humans")
