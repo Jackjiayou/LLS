@@ -6,7 +6,7 @@ from app.core.logger import logger, log_request, log_response, log_error
 from app.models.digital_human import DigitalHuman, DigitalHumanFile
 from app.schemas.digital_human import DigitalHumanCreateRequest
 
-from  app.services.digital_human_service import  process_video,process_video_new
+from  app.services.digital_human_service import get_gh_service
 
 from app.core.config import settings
 import os
@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Optional
 import shutil
 import traceback
-
+from  app.utils.audio import  convert_mp3_16k
 router = APIRouter()
 
 # 文件上传目录
@@ -272,7 +272,8 @@ async def upload_audio(
 async def create_digital_human(
     req: DigitalHumanCreateRequest,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    dh_service = Depends(get_gh_service)
 ):
     """创建数字人"""
     try:
@@ -322,8 +323,10 @@ async def create_digital_human(
             if not audio_file:
                 raise HTTPException(status_code=404, detail="音频文件不存在")
             files.append(audio_file)
-            #audio_path =  os.path.join(settings.UPLOAD_DIR,audio_file.file_path)
+            #local_audio_path =  os.path.join(settings.UPLOAD_DIR,audio_file.file_path)
+            #new_name = convert_mp3_16k(local_audio_path)
             audio_path = f"{settings.uploads_url}{audio_file.file_path}"
+            #audio_path = f"{settings.uploads_url}{new_name}"
         # 创建数字人记录m
         digital_human = DigitalHuman(
             user_id=current_user["sub"],
@@ -341,7 +344,7 @@ async def create_digital_human(
         # 调用第三方接口获取任务ID
         try:
             task_id = 624129
-            task_id = process_video_new(user_id, vidoe_path, audio_path)
+            task_id = dh_service.process_video_new(user_id, vidoe_path, audio_path)
 
             # 更新数字人记录，保存任务ID
             digital_human.task_id = task_id

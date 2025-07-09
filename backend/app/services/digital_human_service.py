@@ -18,121 +18,114 @@ class DigitalHumanService:
         self.base_url = settings.BASE_URL + "/uploads/tts/"
 
 
-def process_video(user_id,video_path, audio_path, api_url="http://117.50.194.151/:8000"):
-    """
-    处理视频和音频文件
+    def process_video(self,user_id,video_path, audio_path, api_url="http://117.50.194.151/:8000"):
+        """
+        处理视频和音频文件
 
-    参数:
-        video_path: 视频文件路径（MP4格式）
-        audio_path: 音频文件路径（WAV格式）
-        api_url: API服务器地址
-    """
-    # 1. 上传文件并获取任务ID
-    files = {
-        'video_file': ('input.mp4', open(video_path, 'rb'), 'video/mp4'),
-        'audio_file': ('input.wav', open(audio_path, 'rb'), 'audio/wav')
-    }
+        参数:
+            video_path: 视频文件路径（MP4格式）
+            audio_path: 音频文件路径（WAV格式）
+            api_url: API服务器地址
+        """
+        # 1. 上传文件并获取任务ID
+        files = {
+            'video_file': ('input.mp4', open(video_path, 'rb'), 'video/mp4'),
+            'audio_file': ('input.wav', open(audio_path, 'rb'), 'audio/wav')
+        }
 
-    print("开始上传文件...")
-    response = requests.post(f"{api_url}/process/", files=files)
-    if response.status_code != 200:
-        print(f"上传失败: {response.text}")
-        return
+        print("开始上传文件...")
+        response = requests.post(f"{api_url}/process/", files=files)
+        if response.status_code != 200:
+            print(f"上传失败: {response.text}")
+            return
 
-    task_id = response.json()['task_id']
-    print(f"文件上传成功，任务ID: {task_id}")
+        task_id = response.json()['task_id']
+        print(f"文件上传成功，任务ID: {task_id}")
 
-    # 2. 循环检查处理状态
-    while True:
-        status_response = requests.get(f"{api_url}/status/{task_id}")
-        print('get code status:'+str(status_response.status_code))
-        if status_response.status_code == 502:
-            print('502')
-            continue
-        status = status_response.json()
-        print(f"当前状态: {status['status']}")
+        # 2. 循环检查处理状态
+        while True:
+            status_response = requests.get(f"{api_url}/status/{task_id}")
+            print('get code status:'+str(status_response.status_code))
+            if status_response.status_code == 502:
+                print('502')
+                continue
+            status = status_response.json()
+            print(f"当前状态: {status['status']}")
 
-        if status['status'] == 'completed':
-            # 3. 下载处理完成的视频
-            print("处理完成，开始下载结果...")
-            result_response = requests.get(f"{api_url}/result/{task_id}")
+            if status['status'] == 'completed':
+                # 3. 下载处理完成的视频
+                print("处理完成，开始下载结果...")
+                result_response = requests.get(f"{api_url}/result/{task_id}")
 
-            if result_response.status_code == 200:
-                user_dir = f"{ settings.UPLOAD_DIR}/digital_human/generate/{user_id}"
-                os.makedirs(user_dir, exist_ok=True)
-                output_filename = f"output_{task_id}_input.mp4"
-                url_path = f"{settings.BASE_URL}/uploads/digital_human/generate/{user_id}/{output_filename}"
-                output_path =f"{ user_dir}/{output_filename}"
+                if result_response.status_code == 200:
+                    user_dir = f"{ settings.UPLOAD_DIR}/digital_human/generate/{user_id}"
+                    os.makedirs(user_dir, exist_ok=True)
+                    output_filename = f"output_{task_id}_input.mp4"
+                    url_path = f"{settings.BASE_URL}/uploads/digital_human/generate/{user_id}/{output_filename}"
+                    output_path =f"{ user_dir}/{output_filename}"
 
-                with open(output_path, 'wb') as f:
-                    f.write(result_response.content)
-                print(f"下载完成，保存到: {output_path}")
-                return output_path,url_path
-            else:
-                print(f"下载失败: {result_response.text}")
-                raise HTTPException(status_code=500, detail=f"获取机器人消息失败: {str(result_response.text)}")
-            break
+                    with open(output_path, 'wb') as f:
+                        f.write(result_response.content)
+                    print(f"下载完成，保存到: {output_path}")
+                    return output_path,url_path
+                else:
+                    print(f"下载失败: {result_response.text}")
+                    raise HTTPException(status_code=500, detail=f"获取机器人消息失败: {str(result_response.text)}")
+                break
 
-        elif status['status'] == 'failed':
-            print(f"处理失败: {status.get('error', '未知错误')}")
-            raise HTTPException(status_code=500, detail=f"获取机器人消息失败")
-            break
+            elif status['status'] == 'failed':
+                print(f"处理失败: {status.get('error', '未知错误')}")
+                raise HTTPException(status_code=500, detail=f"获取机器人消息失败")
+                break
 
-        time.sleep(5)  # 每5秒检查一次状态
+            time.sleep(5)  # 每5秒检查一次状态
 
-def process_video_new(user_id,video_path, audio_path):
-    """
-    处理视频和音频文件
+    def process_video_new(self,user_id,video_path, audio_path):
+        """
+        处理视频和音频文件
 
-    参数:
-        video_path: 视频文件路径（MP4格式）
-        audio_path: 音频文件路径（WAV格式）
-        api_url: API服务器地址
-    """
-    TOKEN = 'Bearer 7B00263DA1C457604E9405EA6CC4DD50.1ED18A77A17E099B6D5CDE4FA56714C3.YTECHBIL'
+        参数:
+            video_path: 视频文件路径（MP4格式）
+            audio_path: 音频文件路径（WAV格式）
+            api_url: API服务器地址
+        """
+        # 请求地址
+        url = 'https://api.yidevs.com/app/human/human/Musetalk/direct'
 
-    # 请求地址
-    url = 'https://api.yidevs.com/app/human/human/Musetalk/direct'
+        # 请求头
+        headers = {
+            'Authorization': settings.xjyTOKEN,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
 
-    # 请求头
-    headers = {
-        'Authorization': TOKEN,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-    }
+        # 请求参数
+        payload = {
+            "callback_url": "https://ai.dl-dd.com/api/digital-human/create_digital_human_callback",
+            "video_url": video_path,
+            "audio_url": audio_path
+        }
+        #https://a8b7-113-226-47-201.ngrok-free.app/
+        # 发送 POST 请求
+        print(payload)
+        logger.info(f'payload:{payload}')
+        response = requests.post(url, json=payload, headers=headers)
 
-    # 请求参数
-    payload = {
-        "callback_url": "https://ai.dl-dd.com/api/digital-human/create_digital_human_callback",
-        "video_url": video_path,
-        "audio_url": audio_path
-    }
-    #https://a8b7-113-226-47-201.ngrok-free.app/
-    # 发送 POST 请求
-    print(payload)
-    logger.info(f'payload:{payload}')
-    response = requests.post(url, json=payload, headers=headers)
-
-    # 打印返回结果
-    logger.info(f'response:{response.json()}')
-    print(response.status_code )
-    if response.status_code == 200:
-        result = response.json()
-        print("响应成功:")
-        # 返回任务ID
-        return result['data']['video_task_id']
-    else:
-        print("请求失败，状态码:", response.status_code)
-        print("返回内容:", response.text)
-        raise HTTPException(status_code=500, detail=f"生成数字人失败: {str(response.text)}")
-
-
-
-
-
+        # 打印返回结果
+        logger.info(f'response:{response.json()}')
+        print(response.status_code )
+        if response.status_code == 200:
+            result = response.json()
+            print("响应成功:")
+            # 返回任务ID
+            return result['data']['video_task_id']
+        else:
+            print("请求失败，状态码:", response.status_code)
+            print("返回内容:", response.text)
+            raise HTTPException(status_code=500, detail=f"生成数字人失败: {str(response.text)}")
 
 #
 #
-# # 新增依赖注入工厂
-# def get_gh_service():
-#     return DigitalHumanService()
+# 新增依赖注入工厂
+def get_gh_service():
+    return DigitalHumanService()

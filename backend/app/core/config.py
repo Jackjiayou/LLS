@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     # 视频合成API配置
     VIDEO_SYNTHESIS_API_URL: str = "http://106.75.44.55:8000"
 
+    xjyTOKEN : str = 'Bearer 7B00263DA1C457604E9405EA6CC4DD50.1ED18A77A17E099B6D5CDE4FA56714C3.YTECHBIL'
+
     # 向量数据库配置
     VECTOR_DB_PATH: str = "./db/fund_nucleotide_chunk"
 
