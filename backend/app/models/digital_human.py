@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Dict, List, Any, Optional
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Integer
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Integer, Float
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 import uuid
@@ -71,3 +71,60 @@ class DigitalHuman(Base):
     image_file = relationship("DigitalHumanFile", foreign_keys=[image_file_id], back_populates="digital_humans")
     video_file = relationship("DigitalHumanFile", foreign_keys=[video_file_id], back_populates="video_digital_humans")
     audio_file = relationship("DigitalHumanFile", foreign_keys=[audio_file_id], back_populates="audio_digital_humans") 
+
+class DigitalHumanClone(Base):
+    """分身克隆表"""
+    __tablename__ = "digital_human_clones"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=False, index=True)
+    scene_task_id = Column(String(100), unique=True, index=True)
+    name = Column(String(100), nullable=False)
+    video_url = Column(String(500), nullable=True)
+    cover_url = Column(String(500), nullable=True)
+    status = Column(String(20), nullable=False, default="processing")  # processing, completed, failed
+    create_time = Column(DateTime, default=datetime.utcnow)
+    update_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class VoiceClone(Base):
+    """音色克隆表"""
+    __tablename__ = "voice_clones"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=False, index=True)
+    voice_id = Column(String(100),  unique=True, index=True)
+    task_id = Column(String(100), nullable=True)
+    name = Column(String(100), nullable=False)
+    audio_url = Column(String(500), nullable=True)
+    status = Column(String(20), nullable=False, default="processing")
+    create_time = Column(DateTime, default=datetime.utcnow)
+    update_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class VoiceSynthesis(Base):
+    """音频合成表"""
+    __tablename__ = "voice_syntheses"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=False, index=True)
+    voice_id = Column(String(100), nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    audio_url = Column(String(500), nullable=True)
+    status = Column(String(20), nullable=False, default="processing")
+    create_time = Column(DateTime, default=datetime.utcnow)
+    update_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class DigitalHumanSynthesis(Base):
+    """数字人合成表"""
+    __tablename__ = "digital_human_syntheses"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=False, index=True)
+    video_task_id = Column(String(100),  unique=True, index=True)
+    scene_task_id = Column(String(100), nullable=False, index=True)
+    audio_url = Column(String(500), nullable=True)
+    video_url = Column(String(500), nullable=True)
+    cover_url = Column(String(500), nullable=True)
+    duration = Column(Float, nullable=True)
+    status = Column(String(20), nullable=False, default="processing")
+    create_time = Column(DateTime, default=datetime.utcnow)
+    update_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 
