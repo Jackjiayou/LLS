@@ -551,7 +551,8 @@ async def get_synthesize_list(
             "video_url": synthesis.video_url,
             "cover_url": synthesis.cover_url,
             "duration": synthesis.duration,
-            "create_time": synthesis.create_time.isoformat()
+            "create_time": synthesis.create_time.isoformat(),
+            "update_time": synthesis.update_time.isoformat() if synthesis.update_time else None
         })
 
     return {
