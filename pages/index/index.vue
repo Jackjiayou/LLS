@@ -10,9 +10,9 @@
 		</view>
 		<!-- 用户信息卡片 -->
 		<view class="card user-card">
-            <!-- <image class="avatar" :src="`${apiBaseUrl}/uploads/static/user-avatar.png`" ></image> -->
+            <image class="avatar" :src="`${apiBaseUrl}/uploads/static/user-avatar.png`" ></image>
             <!-- <text class="username">李经理</text> -->
-            <image class="avatar" :src="userInfo.avatar"></image>
+            <!-- <image class="avatar" :src="userInfo.avatar"></image> -->
 			<text class="username">{{userInfo.name}}</text>
             <view class="user-stats">
 				<view class="stat-item">

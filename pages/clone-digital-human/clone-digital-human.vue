@@ -1,8 +1,17 @@
 <template>
   <view class="clone-digital-human-container">
+    <!-- 视频录制规范引导图 -->
+    <view class="video-guide-section">
+     <image :src="apiBaseUrl + '/uploads/static/video_guide.png'" mode="widthFix" class="video-guide-img" />
+      <view class="video-guide-desc">请按上方规范录制分身视频，避免常见错误</view>
+    </view>
     <view class="form-section">
       <button @click="chooseVideo">上传分身视频</button>
-      <view v-if="videoFileName">已选视频：{{ videoFileName }}</view>
+      <!-- 视频预览 -->
+      <view v-if="localVideoPath" class="video-preview">
+        <video :src="localVideoPath" controls style="width: 100%; margin-bottom: 16rpx;" />
+        <view class="video-preview-tip">已选择视频，确认无误后输入分手名称可点击“开始克隆数字人”</view>
+      </view>
       <input v-model="name" placeholder="请输入分身名称" />
       <button :disabled="!videoUrl || !name || isCloning" @click="startClone">开始克隆数字人</button>
     </view>
@@ -25,15 +34,17 @@ import config from '@/config.js'
 export default {
   data() {
     return {
+      apiBaseUrl: config.apiBaseUrl,
       videoUrl: '',
-      videoFileName: '',
+      // videoFileName: '', // 不再显示文件名
       name: '',
       isCloning: false,
       cloneStatus: '',
       sceneTaskId: '',
       cloneVideoUrl: '',
       cloneCoverUrl: '',
-      pollingTimer: null
+      pollingTimer: null,
+      localVideoPath: '' // 新增：本地临时视频路径
     }
   },
   methods: {
@@ -44,7 +55,8 @@ export default {
         camera: 'back',
         success: (res) => {
           const tempFilePath = res.tempFilePath;
-          this.videoFileName = tempFilePath.split('/').pop();
+          // this.videoFileName = tempFilePath.split('/').pop(); // 不再显示文件名
+          this.localVideoPath = tempFilePath; // 新增：本地预览
           this.uploadVideo(tempFilePath);
         }
       });
@@ -145,6 +157,31 @@ export default {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 40rpx 30rpx;
+}
+.video-guide-section {
+  background: #f6fffa;
+  border-radius: 20rpx;
+  padding: 30rpx 20rpx 20rpx 20rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05);
+  text-align: center;
+}
+.video-guide-img {
+  width: 100%;
+  max-width: 500rpx;
+  margin: 0 auto 16rpx auto;
+  display: block;
+}
+.video-guide-desc {
+  color: #10b981;
+  font-size: 28rpx;
+  margin-top: 8rpx;
+}
+.video-preview-tip {
+  color: #10b981;
+  font-size: 24rpx;
+  margin-top: 4rpx;
+  text-align: left;
 }
 .form-section {
   background: #fff;

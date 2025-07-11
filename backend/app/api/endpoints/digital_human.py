@@ -246,7 +246,7 @@ async def upload_audio(
         response_data = {
             "success": True,
             "file_id": str(db_file.id),
-            "file_url": f"{settings.BASE_URL}/uploads/digital_human/{relative_path}",
+            "file_url": f"{settings.uploads_url}/{relative_path}",
             "message": "音频上传成功"
         }
         
@@ -586,7 +586,14 @@ async def clone_voice(
     db: Session = Depends(get_db)
 ):
     #todo
-    #audio_url = 'https://yc-digital-human.oss-cn-guangzhou.aliyuncs.com/system_upload/20250103/95237a0bdfbfa18363a5ac8e008eed6a.mp3'
+    # 记录登录请求
+    log_request({
+        "endpoint": "/clone_voice",
+        "data": {
+            "audio_url": audio_url
+        }
+    })
+    audio_url = 'https://ai.dl-dd.com/uploads/download/1747033032.mp3'
     """发起克隆语音"""
     voice_clone = VoiceClone(
         user_id=current_user["sub"],
@@ -601,6 +608,7 @@ async def clone_voice(
     db.refresh(voice_clone)
     
     try:
+        logger.info(f"clone_voice   audio_url: {audio_url}")
         resp = requests.post(
             "https://api.yidevs.com/app/human/human/Voice/clone",
             json={

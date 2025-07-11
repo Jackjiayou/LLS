@@ -62,7 +62,7 @@
           @click="startClone" 
           :disabled="!canClone || isCloning"
         >
-          <uni-icons type="mic" size="20" color="#fff"></uni-icons>
+          <uni-icons type="gear" size="20" color="#fff"></uni-icons>
           <text class="btn-text">{{ isCloning ? '克隆中...' : '开始克隆音色' }}</text>
         </button>
       </view>
@@ -241,7 +241,7 @@ export default {
     // 开始克隆
     startClone() {
       if (!this.canClone || this.isCloning) return;
-      
+      console.log(this.audioUrl)
       this.isCloning = true;
       uni.showLoading({ title: '克隆中...' });
       
