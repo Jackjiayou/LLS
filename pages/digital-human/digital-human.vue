@@ -12,7 +12,7 @@
 				<image class="avatar" src="/static/digital-human-avatar.png" mode="aspectFill"></image>
 				<view class="intro-text">
 					<text class="name">智能数字人</text>
-					<text class="description">专业的AI助手，为您提供智能对话服务</text>
+					<text class="description">专业的AI助手，为您提供智能实时对话服务，数字人视频制作服务</text>
 				</view>
 			</view>
 			
@@ -23,43 +23,36 @@
 					<text class="feature-title">实时语音对话</text>
 				</view>
 				<view class="voice-description">
-					<text class="desc-text">• 支持语音输入，解放双手，提升交互体验</text>
-					<text class="desc-text">• 实时语音识别，准确率高，响应速度快</text>
-					<text class="desc-text">• 智能语音合成，自然流畅的对话体验</text>
-					<text class="desc-text">• 多语言支持，满足不同语言交流需求</text>
+					<text class="desc-text">• 实时语音识别，支持语音输入，准确率高，响应速度快，提升交互体验</text>
 				</view>
+                <view class="feature-header">
+                	<uni-icons type="mic" size="24" color="#1AAD19"></uni-icons>
+                	<text class="feature-title">数字人制作</text>
+                </view>
+                <view class="voice-description">
+                	<text class="desc-text">• 支持“直传”与“分步式（克隆+合成）”两套流程制作数字人，支持克隆语音语色合成数字人</text>
+                </view>
 			</view>
 			
 			<!-- 功能按钮 -->
 			<view class="button-container">
 				<button class="primary-btn" @click="openDigitalHuman">
 					<uni-icons type="chat" size="20" color="#fff"></uni-icons>
-					<text class="btn-text">开始对话</text>
+					<text class="btn-text">实时语音对话（VIP专享）</text>
 				</button>
 				<button class="create-btn" @click="createDigitalHuman">
 					<uni-icons type="plus" size="20" color="#fff"></uni-icons>
+					<text class="btn-text">制作数字人（直传）</text>
+				</button>
+				<button class="clone-btn" @click="goToCloneDigitalHuman">
+					<uni-icons type="person" size="20" color="#fff"></uni-icons>
 					<text class="btn-text">制作数字人</text>
 				</button>
+				<button class="video-list-btn" @click="goToSynthesizeList">
+					<uni-icons type="videocam" size="20" color="#fff"></uni-icons>
+					<text class="btn-text">合成视频列表</text>
+				</button>
 			</view>
-			
-			<!-- 功能说明 -->
-			<view class="features">
-				<view class="feature-item">
-					<uni-icons type="checkmarkempty" size="16" color="#1AAD19"></uni-icons>
-					<text class="feature-text">智能问答</text>
-				</view>
-				<view class="feature-item">
-					<uni-icons type="checkmarkempty" size="16" color="#1AAD19"></uni-icons>
-					<text class="feature-text">实时语音对话</text>
-				</view>
-				<view class="feature-item">
-					<uni-icons type="checkmarkempty" size="16" color="#1AAD19"></uni-icons>
-					<text class="feature-text">专业咨询</text>
-				</view>
-				<view class="feature-item">
-					<uni-icons type="checkmarkempty" size="16" color="#1AAD19"></uni-icons>
-					<text class="feature-text">24小时在线</text>
-				</view>
 			</view>
 		</view>
 	</view>
@@ -89,6 +82,17 @@
 				// 跳转到制作数字人页面
 				uni.navigateTo({
 					url: '/pages/create-digital-human/create-digital-human'
+				});
+			},
+			goToCloneDigitalHuman() {
+				uni.navigateTo({
+					url: '/pages/create-digital-human-advanced/create-digital-human-advanced'
+				});
+			},
+			goToSynthesizeList() {
+                console.log(uni.getStorageSync('token'))
+				uni.navigateTo({
+					url: '/pages/synthesize-list/synthesize-list'
 				});
 			}
 		}
@@ -160,6 +164,16 @@
 		display: flex;
 		flex-direction: column;
 		gap: 20rpx;
+		align-items: center;
+	}
+	.primary-btn,
+	.create-btn,
+	.clone-btn,
+	.video-list-btn {
+		width: 80%;
+		max-width: 600rpx;
+		min-width: 300rpx;
+		justify-content: center;
 	}
 	
 	.primary-btn {
@@ -270,5 +284,33 @@
 		font-size: 28rpx;
 		color: #333;
 		margin-left: 15rpx;
+	}
+	.clone-btn {
+		background: linear-gradient(45deg, #ff9800, #ff5722);
+		border: none;
+		border-radius: 50rpx;
+		padding: 30rpx 60rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 8rpx 24rpx rgba(255, 152, 0, 0.3);
+		transition: all 0.3s ease;
+		margin-top: 20rpx;
+	}
+	.video-list-btn {
+		background: linear-gradient(45deg, #00bcd4, #2196f3);
+		border: none;
+		border-radius: 50rpx;
+		padding: 30rpx 60rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 8rpx 24rpx rgba(33, 150, 243, 0.3);
+		transition: all 0.3s ease;
+		margin-top: 20rpx;
+	}
+	.video-list-btn:active {
+		transform: translateY(2rpx);
+		box-shadow: 0 4rpx 12rpx rgba(33, 150, 243, 0.3);
 	}
 </style> 
