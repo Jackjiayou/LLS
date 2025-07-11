@@ -56,6 +56,12 @@
 			}
 		},
 		{
+			"path": "pages/create-digital-human-advanced/create-digital-human-advanced",
+			"style": {
+				"navigationBarTitleText": "制作数字人"
+			}
+		},
+		{
 			"path": "pages/webview/webview",
 			"style": {
 				"navigationBarTitleText": "AI顾问"
@@ -67,7 +73,43 @@
             {
                 "navigationBarTitleText" : "实时数字人"
             }
-        }
+        },
+		{
+			"path": "pages/clone-digital-human/clone-digital-human",
+			"style": {
+				"navigationBarTitleText": "克隆数字人"
+			}
+		},
+		{
+			"path": "pages/clone-voice/clone-voice",
+			"style": {
+				"navigationBarTitleText": "克隆语音"
+			}
+		},
+		{
+			"path": "pages/synthesize-digital-human/synthesize-digital-human",
+			"style": {
+				"navigationBarTitleText": "合成数字人"
+			}
+		},
+		{
+			"path": "pages/synthesize-list/synthesize-list",
+			"style": {
+				"navigationBarTitleText": "合成视频列表"
+			}
+		},
+		{
+			"path": "pages/select-clone/select-clone",
+			"style": {
+				"navigationBarTitleText": "选择分身"
+			}
+		},
+		{
+			"path": "pages/select-voice/select-voice",
+			"style": {
+				"navigationBarTitleText": "选择音色"
+			}
+		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
