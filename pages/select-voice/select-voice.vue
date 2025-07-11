@@ -436,7 +436,7 @@ export default {
 .confirm-btn {
   width: 100%;
   height: 88rpx;
-  background: linear-gradient(135deg, #FF8E53 0%, #FF6B6B 100%);
+  background: linear-gradient(135deg, #1AAD19 0%, #2ECC71 100%);
   border: none;
   border-radius: 44rpx;
   color: #fff;
@@ -445,7 +445,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(255, 142, 83, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(26, 173, 25, 0.3);
   transition: all 0.3s ease;
 }
 

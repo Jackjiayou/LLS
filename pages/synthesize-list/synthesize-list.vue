@@ -17,9 +17,13 @@
         <view class="video-info">
           <text class="video-time">合成时间: {{ formatTime(item.create_time) }}</text>
           <text class="video-duration">时长: {{ formatDuration(item.duration) }}</text>
+          <!-- 添加状态标注 -->
+          <view class="video-status" :class="item.status">
+            <text class="status-text">{{ getStatusText(item.status) }}</text>
+          </view>
           <view class="video-actions">
-            <button class="download-btn" @click="downloadVideo(item.video_url)">下载视频</button>
-            <button class="play-btn" @click="playVideo(item.video_url)">播放</button>
+            <button class="download-btn" @click="downloadVideo(item.video_url)" :disabled="item.status !== 'completed'">下载视频</button>
+            <button class="play-btn" @click="playVideo(item.video_url)" :disabled="item.status !== 'completed'">播放</button>
           </view>
         </view>
       </view>
@@ -113,6 +117,18 @@ export default {
     closeVideo() {
       this.currentVideoUrl = '';
       this.$refs.videoPopup.close();
+    },
+    getStatusText(status) {
+      switch (status) {
+        case 'completed':
+          return '已完成';
+        case 'processing':
+          return '合成中';
+        case 'failed':
+          return '失败';
+        default:
+          return '未知';
+      }
     }
   }
 }
@@ -183,6 +199,25 @@ export default {
   color: #666;
   margin-bottom: 8rpx;
 }
+.video-status {
+  background-color: #f0f0f0;
+  border-radius: 10rpx;
+  padding: 8rpx 15rpx;
+  margin-bottom: 10rpx;
+  display: inline-block;
+}
+.video-status.completed {
+  background-color: #e0f7fa;
+  color: #007bff;
+}
+.video-status.processing {
+  background-color: #fff3cd;
+  color: #ffc107;
+}
+.video-status.failed {
+  background-color: #f8d7da;
+  color: #721c24;
+}
 .video-actions {
   display: flex;
   gap: 20rpx;
@@ -196,6 +231,11 @@ export default {
   padding: 12rpx 32rpx;
   font-size: 26rpx;
   font-weight: bold;
+}
+.download-btn:disabled, .play-btn:disabled {
+  background: #ccc;
+  color: #999;
+  cursor: not-allowed;
 }
 .play-btn {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

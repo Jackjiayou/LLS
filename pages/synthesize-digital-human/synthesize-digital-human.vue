@@ -31,7 +31,7 @@
             </view>
             <view class="selected-info">
               <text class="selected-name">{{ selectedClone.name }}</text>
-              <text class="selected-status" :class="selectedClone.status">{{ getStatusText(selectedClone.status) }}</text>
+              <!-- 已移除分身状态，只保留分身名称 -->
             </view>
           </view>
           <view v-else class="placeholder">
@@ -100,7 +100,7 @@
       <!-- 合成结果 -->
       <view v-if="synthesisResult" class="result-section">
         <view class="section-header">
-          <text class="section-title">合成结果</text>
+          <text class="section-title">合成结果,也可返回上级菜单在合成数字人列表中查看</text>
         </view>
         <view class="result-content">
           <view v-if="synthesisResult.status === 'processing'" class="processing">
