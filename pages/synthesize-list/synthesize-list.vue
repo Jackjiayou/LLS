@@ -15,8 +15,9 @@
       <view v-for="item in videoList" :key="item.video_task_id" class="video-card">
         <image :src="item.cover_url" class="video-cover" mode="aspectFill"></image>
         <view class="video-info">
-          <text class="video-time">合成时间: {{ formatTime(item.create_time) }}</text>
-          <text class="video-duration">时长: {{ formatDuration(item.duration) }}</text>
+          <text class="video-time">开始时间: {{ formatTime(item.create_time) }}</text>
+          <text class="video-end-time" v-if="item.update_time && item.status === 'completed'">完成时间: {{ formatTime(item.update_time) }}</text>
+          <text class="video-duration" v-if="item.duration">时长: {{ formatDuration(item.duration) }}</text>
           <!-- 添加状态标注 -->
           <view class="video-status" :class="item.status">
             <text class="status-text">{{ getStatusText(item.status) }}</text>
@@ -78,7 +79,17 @@ export default {
     formatTime(timeStr) {
       if (!timeStr) return '';
       const date = new Date(timeStr);
-      return date.toLocaleString('zh-CN');
+      // 转换为中国时间（UTC+8）
+      const chinaTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+      return chinaTime.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
     },
     formatDuration(duration) {
       if (!duration) return '';
@@ -194,6 +205,12 @@ export default {
   flex: 1;
 }
 .video-time, .video-duration {
+  display: block;
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+}
+.video-end-time {
   display: block;
   font-size: 26rpx;
   color: #666;
