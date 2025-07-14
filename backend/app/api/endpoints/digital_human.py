@@ -102,7 +102,7 @@ async def upload_image(
         response_data = {
             "success": True,
             "file_id": str(db_file.id),
-            "file_url": f"{settings.BASE_URL}/uploads/digital_human/{relative_path}",
+            "file_url": f"{settings.uploads_url}/{relative_path}",
             "message": "图片上传成功"
         }
         
@@ -174,7 +174,7 @@ async def upload_video(
         response_data = {
             "success": True,
             "file_id": str(db_file.id),
-            "file_url": f"{settings.BASE_URL}/uploads/{relative_path}",
+            "file_url": f"{settings.uploads_url}/{relative_path}",
             "message": "视频上传成功"
         }
         

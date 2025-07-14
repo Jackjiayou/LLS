@@ -36,7 +36,6 @@ export default {
     return {
       apiBaseUrl: config.apiBaseUrl,
       videoUrl: '',
-      // videoFileName: '', // 不再显示文件名
       name: '',
       isCloning: false,
       cloneStatus: '',
@@ -44,7 +43,7 @@ export default {
       cloneVideoUrl: '',
       cloneCoverUrl: '',
       pollingTimer: null,
-      localVideoPath: '' // 新增：本地临时视频路径
+      localVideoPath: ''
     }
   },
   methods: {
@@ -55,14 +54,13 @@ export default {
         camera: 'back',
         success: (res) => {
           const tempFilePath = res.tempFilePath;
-          // this.videoFileName = tempFilePath.split('/').pop(); // 不再显示文件名
-          this.localVideoPath = tempFilePath; // 新增：本地预览
+          this.localVideoPath = tempFilePath;
+          uni.showLoading({ title: '上传中...' });
           this.uploadVideo(tempFilePath);
         }
       });
     },
     uploadVideo(filePath) {
-      uni.showLoading({ title: '上传中...' });
       uni.uploadFile({
         url: config.apiBaseUrl + '/api/digital-human/upload-video',
         filePath: filePath,
@@ -90,6 +88,7 @@ export default {
       if (!this.videoUrl || !this.name) return;
       this.isCloning = true;
       this.cloneStatus = 'processing';
+      uni.showLoading({ title: '克隆任务已提交，正在处理...' });
       uni.request({
         url: config.apiBaseUrl + '/api/digital-human/clone-human',
         method: 'POST',
@@ -107,11 +106,13 @@ export default {
             this.pollingCloneStatus();
           } else {
             this.isCloning = false;
+            uni.hideLoading();
             uni.showToast({ title: res.data.message || '克隆失败', icon: 'none' });
           }
         },
         fail: () => {
           this.isCloning = false;
+          uni.hideLoading();
           uni.showToast({ title: '克隆失败', icon: 'none' });
         }
       });
@@ -133,11 +134,13 @@ export default {
                 this.cloneCoverUrl = res.data.data.cover_url;
                 this.isCloning = false;
                 clearInterval(this.pollingTimer);
+                uni.hideLoading();
                 uni.showToast({ title: '克隆完成', icon: 'success' });
               } else if (status === 'failed') {
                 this.cloneStatus = 'failed';
                 this.isCloning = false;
                 clearInterval(this.pollingTimer);
+                uni.hideLoading();
                 uni.showToast({ title: '克隆失败', icon: 'none' });
               }
             }
