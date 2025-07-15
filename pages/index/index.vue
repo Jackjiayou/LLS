@@ -214,7 +214,7 @@
 				this.scenes[0].icon = this.apiBaseUrl + '/uploads/static/scene1.png';
 				this.scenes[1].icon = this.apiBaseUrl + '/uploads/static/scene2.png';
 				this.scenes[2].icon = this.apiBaseUrl + '/uploads/static/scene3.png';
-				this.scenes[3].icon = this.apiBaseUrl + '/uploads/static/scene4.png';
+				// this.scenes[3].icon = this.apiBaseUrl + '/uploads/static/scene4.png';
 			},
 			async getUserInfo() {
 				console.log('Fetching user info...');

@@ -37,8 +37,8 @@
     <view class="content">
       <!-- 说明文字 -->
       <view class="intro-section">
-        <text class="intro-title">选择制作方式</text>
-        <text class="intro-desc">请选择您想要制作的数字人类型</text>
+        <text class="intro-title">数字人制作方式</text>
+        <text class="intro-desc">克隆数字人分身->克隆音色->合成数字人</text>
       </view>
       <!-- 功能按钮区域 -->
       <view class="function-section">
@@ -48,7 +48,7 @@
             <uni-icons type="videocam" size="32" color="#FF6B6B"></uni-icons>
           </view>
           <view class="function-content">
-            <text class="function-title">克隆数字人</text>
+            <text class="function-title">克隆数字人分身</text>
             <text class="function-desc">上传视频克隆分身</text>
           </view>
           <view class="function-arrow">
