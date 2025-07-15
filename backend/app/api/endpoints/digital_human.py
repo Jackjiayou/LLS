@@ -667,7 +667,8 @@ async def get_voice_list(
 ):
     """获取用户的音色列表"""
     voice_clones = db.query(VoiceClone).filter(
-        VoiceClone.user_id == current_user["sub"]
+        VoiceClone.user_id == current_user["sub"],
+        VoiceClone.status == "completed"  # 只获取已完成的音色
     ).order_by(VoiceClone.create_time.desc()).all()
     
     result = []
@@ -692,7 +693,8 @@ async def get_clone_list(
 ):
     """获取用户的分身列表"""
     clones = db.query(DigitalHumanClone).filter(
-        DigitalHumanClone.user_id == current_user["sub"]
+        DigitalHumanClone.user_id == current_user["sub"],
+             DigitalHumanClone.status == "completed"
     ).order_by(DigitalHumanClone.create_time.desc()).all()
     
     result = []
