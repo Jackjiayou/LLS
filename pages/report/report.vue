@@ -19,7 +19,7 @@
 				</view> 
 				
 				<!-- 各项评分 -->
-				<view class="dimension-scores">
+<!-- 				<view class="dimension-scores">
 					<view class="dimension-item" v-for="(item, index) in report.dimensions" :key="index">
 						<view class="dimension-bar-wrapper">
 							<view class="dimension-name">{{item.name}}</view>
@@ -30,20 +30,40 @@
 							</view>
 						</view>
 					</view>
-				</view>
+				</view> -->
 			</view>
 			
 			<!-- 详细分析 -->
 			<view class="analysis-section">
 				<view class="section-title">详细分析</view>
-				
-				<view class="analysis-item" v-for="(item, index) in report.analysis" :key="index">
-					<view class="analysis-header">
-						<view class="analysis-title">{{item.title}}</view>
-						<view class="analysis-score">{{item.score}}分</view>
+				<!-- 横向评分维度导航 -->
+				<scroll-view class="dimension-nav" scroll-x="true" :scroll-into-view="navScrollIntoView" show-scrollbar="false">
+					<view 
+						v-for="(item, index) in report.analysis" 
+						:key="index" 
+						class="dimension-nav-item"
+						:id="'nav-item-' + index"
+						:class="{active: activeAnalysisIndex === index}"
+						@click="scrollToAnalysis(index)"
+					>
+						{{item.title}}
 					</view>
-					<view class="analysis-content">
-						<text>{{item.content}}</text>
+				</scroll-view>
+				<!-- 详细分析内容 -->
+				<view>
+					<view 
+						class="analysis-item" 
+						v-for="(item, index) in report.analysis" 
+						:key="index"
+						:id="'analysis-' + index"
+					>
+						<view class="analysis-header">
+							<view class="analysis-title">{{item.title}}</view>
+							<view class="analysis-score">{{item.score}}分</view>
+						</view>
+						<view class="analysis-content">
+							<text>{{item.content}}</text>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -92,7 +112,9 @@
 					],
 					analysis: [],
 					suggestions: []
-				}
+				},
+				activeAnalysisIndex: 0,
+				navScrollIntoView: ''
 			}
 		},
         onLoad(options) {
@@ -143,7 +165,9 @@
                             analysis,
                             suggestions
                         };
-                        this.initRadarChart();
+                        this.$nextTick(() => {
+                            this.initRadarChart();
+                        });
                     } else {
                         uni.showToast({ title: '获取报告失败', icon: 'none' });
                     }
@@ -199,6 +223,17 @@
 					}
 				});
 			},
+			scrollToAnalysis(index) {
+				this.activeAnalysisIndex = index;
+				this.navScrollIntoView = 'nav-item-' + index;
+				this.$nextTick(() => {
+					uni.pageScrollTo({
+						selector: `#analysis-${index}`,
+						duration: 300,
+						offsetTop: 120 // 可根据头部高度微调
+					});
+				});
+			},
 			getReportData() {
 				// 获取场景名称
 				const sceneNames = {
@@ -218,7 +253,7 @@
 					});
 					
 					uni.request({
-						url: `${this.apiBaseUrl}/api/reports/${reportId}`,
+						url: `${this.apiBaseUrl}/reports/${reportId}`,
 						success: (res) => {
 							if (res.data) {
 								console.log('获取报告成功:', res.data);
@@ -295,7 +330,6 @@
 		}
 	}
 </script>
- 
 
 <style>
 	.container {
@@ -426,6 +460,41 @@
 		margin-bottom: 20rpx;
 		border-left: 6rpx solid #10b981;
 		padding-left: 15rpx;
+	}
+
+	/* 横向评分维度导航 */
+	.dimension-nav {
+		width: 100%;
+		display: flex;
+		flex-direction: row;
+		overflow-x: auto;
+		white-space: nowrap;
+		margin-bottom: 20rpx;
+		padding-bottom: 10rpx;
+		border-bottom: 1rpx solid #eee;
+		background: #fff;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+	}
+	.dimension-nav::-webkit-scrollbar {
+		display: none;
+	}
+	.dimension-nav-item {
+		display: inline-block;
+		flex-shrink: 0;
+		padding: 4rpx 10rpx;
+		font-size: 24rpx;
+		color: #666;
+		border-radius: 18rpx;
+		margin-right: 6rpx;
+		background: #f5f5f5;
+		transition: background 0.2s, color 0.2s;
+		white-space: nowrap;
+	}
+	.dimension-nav-item.active {
+		background: #10b981;
+		color: #fff;
+		font-weight: bold;
 	}
 	
 	.analysis-item {
