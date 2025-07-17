@@ -27,6 +27,7 @@ from app.schemas.practice import (
     EndPracticeRequest,
     PracticeHistoryResponse
 )
+import  numpy as np
 
 # 改进建议模板
 suggestion_templates = [
@@ -45,6 +46,75 @@ class ConversationService:
         self.current_practice_id = None
         os.makedirs(settings.BASE_DIR + "/tts", exist_ok=True)
         os.makedirs(settings.BASE_DIR + "/voice", exist_ok=True)
+
+    def analyze_practice(self, practice_id: int) -> dict:
+        """
+        对练习进行分析打分，返回各项分数和分析文本
+        """
+        with SessionLocal() as db:
+            practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+            if not practice:
+                raise ValueError(f"Practice record not found: {practice_id}")
+
+            # 1. 获取聊天历史
+            chat_history = practice.chat_history or []
+            user_texts = [msg['text'] for msg in chat_history if msg.get('from') == 'user']
+            user_voice_urls = [msg['voiceUrl'] for msg in chat_history if
+                               msg.get('from') == 'user' and msg.get('voiceUrl')]
+
+            # 2. 语言组织能力、说服力（大模型分析，伪代码/接口）
+            # 你可以用OpenAI、Qwen等大模型API
+            def call_llm_for_ability(texts, ability_type):
+                # ability_type: "organization" or "persuasiveness"
+                # 伪代码：实际用你的大模型API
+                prompt = f"请对以下用户对话内容的{ability_type}进行1-100分打分，并给出简要分析：\n" + "\n".join(texts)
+                # result = call_your_llm_api(prompt)
+                # return result['score'], result['analysis']
+                return np.random.randint(70, 95), f"{ability_type}分析文本（伪）"
+
+            org_score, org_analysis = call_llm_for_ability(user_texts, "语言组织能力")
+            pers_score, pers_analysis = call_llm_for_ability(user_texts, "说服力")
+
+            # 3. 流利度（可直接实现：如平均语速、停顿等，简单实现如下）
+            def calc_fluency(texts):
+                # 简单实现：平均句长/字数，越高越流利
+                if not texts:
+                    return 60, "无有效语音"
+                avg_len = np.mean([len(t) for t in texts])
+                score = min(100, max(60, int(avg_len * 2)))
+                analysis = f"平均句长{avg_len:.1f}字，流利度得分{score}"
+                return score, analysis
+
+            fluency_score, fluency_analysis = calc_fluency(user_texts)
+
+            # 4. 发音准确度、语音表达（伪代码/接口）
+            def calc_pronunciation(voice_urls):
+                # 伪代码：调用第三方语音评测API
+                # result = call_speech_eval_api(voice_urls)
+                # return result['score'], result['analysis']
+                return 85, "发音准确度分析文本（伪）"
+
+            def calc_expression(voice_urls):
+                # 伪代码：调用第三方语音表达API
+                return 88, "语音表达分析文本（伪）"
+
+            pronunciation_score, pronunciation_analysis = calc_pronunciation(user_voice_urls)
+            expression_score, expression_analysis = calc_expression(user_voice_urls)
+
+            # 5. 汇总
+            score_json = {
+                "organization": {"score": org_score, "analysis": org_analysis},
+                "persuasiveness": {"score": pers_score, "analysis": pers_analysis},
+                "fluency": {"score": fluency_score, "analysis": fluency_analysis},
+                "pronunciation": {"score": pronunciation_score, "analysis": pronunciation_analysis},
+                "expression": {"score": expression_score, "analysis": expression_analysis},
+            }
+
+            # 存储到practice
+            practice.score_json = score_json
+            db.commit()
+
+            return score_json
 
     async def start_practice(self, user_id: int, scenario_id: int) -> Dict[str, Any]:
         """开始新的练习"""
