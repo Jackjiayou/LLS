@@ -92,11 +92,11 @@ class ConversationService:
                 # 伪代码：调用第三方语音评测API
                 # result = call_speech_eval_api(voice_urls)
                 # return result['score'], result['analysis']
-                return 85, "发音准确度分析文本（伪）"
+                return 85, "发音准确度分析文本（伪）1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
 
             def calc_expression(voice_urls):
                 # 伪代码：调用第三方语音表达API
-                return 88, "语音表达分析文本（伪）"
+                return 88, "语音表达分析文本（伪）111111111111111111111111111111111111111111111111111111111111111"
 
             pronunciation_score, pronunciation_analysis = calc_pronunciation(user_voice_urls)
             expression_score, expression_analysis = calc_expression(user_voice_urls)
