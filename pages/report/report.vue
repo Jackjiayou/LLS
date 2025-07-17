@@ -87,8 +87,8 @@
 						{ name: '语言组织能力', score: 80 },
 						{ name: '说服力', score: 75 },
 						{ name: '流利度', score: 90 },
-						{ name: '准确度', score: 85 },
-						{ name: '语言表达', score: 83 }
+						{ name: '语音准确度', score: 85 },
+						{ name: '语音表达', score: 83 } 
 					],
 					analysis: [
 						{
@@ -127,12 +127,26 @@
 				}
 			}
 		},
-		onLoad(options) {
-			if (options.sceneId) {
-				this.sceneId = parseInt(options.sceneId);
-				this.getReportData();
-			}
-		},
+        onLoad(options) {
+            const practiceId = options.practiceId;
+            const token = uni.getStorageSync('token');
+            uni.request({
+                url: `${this.apiBaseUrl}/api/report/analyze-practice`,
+                method: 'POST',
+                data: { practice_id: practiceId },
+                header: {
+                    'Authorization': `Bearer ${token}`, 
+                    'Content-Type': 'application/json'
+                },
+                success: (res) => {
+                    if (res.data && res.data.success) {
+                        this.reportData = res.data.data;
+                    } else {
+                        uni.showToast({ title: '获取报告失败', icon: 'none' });
+                    }
+                }
+            });
+        },
 		onReady() {
 			const sysInfo = uni.getSystemInfoSync();
 			this.radarSize = Math.floor(sysInfo.windowWidth * 0.9);

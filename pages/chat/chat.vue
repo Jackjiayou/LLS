@@ -1012,12 +1012,19 @@
 				});
 			},
 			endAndViewReport() {
+                this.saveChatHistory()
 				// 发送所有对话记录到后端生成报告
-				this.generateReport();
-				// 跳转到新版报告页面
-				uni.navigateTo({
-					url: `/pages/report/report?sceneId=${this.sceneId}`
-				});
+                uni.showLoading({ title: '生成报告中...' });
+                 
+                uni.navigateTo({
+                    url: `/pages/report/report?practiceId=${this.practiceId}`
+                });
+                       
+				// this.generateReport();
+				// // 跳转到新版报告页面
+				// uni.navigateTo({
+				// 	url: `/pages/report/report?sceneId=${this.sceneId}`
+				// });
 			},
 			generateReport() {
 				console.log('生成练习报告...');
