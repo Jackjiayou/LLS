@@ -82,48 +82,16 @@
 				sceneName: '',
 				apiBaseUrl: config.apiBaseUrl,
 				report: {
-					overall: 85,
+					overall: 0,
 					dimensions: [
-						{ name: '语言组织能力', score: 80 },
-						{ name: '说服力', score: 75 },
-						{ name: '流利度', score: 90 },
-						{ name: '语音准确度', score: 85 },
-						{ name: '语音表达', score: 83 } 
+						{ name: '语言组织能力', score: 0 },
+						{ name: '说服力', score: 0 },
+						{ name: '流利度', score: 0 },
+						{ name: '发音准确度', score: 0 },
+						{ name: '语音表达', score: 0 } 
 					],
-					analysis: [
-						{
-							title: '语言组织能力',
-							score: 80,
-							content: '您的语言组织整体较好，能够按照逻辑顺序表达自己的观点。但在某些回答中，内容结构可以更紧凑，减少不必要的铺垫。建议在回答前先在心中整理好要点，按照"总-分-总"的结构进行表达。'
-						},
-						{
-							title: '说服力',
-							score: 75,
-							content: '您在阐述产品优势时的说服力有待提高。建议增加具体数据和案例支持，让客户更容易接受您的观点。例如"我们的产品帮助A公司在一个月内提升了销售额30%"这样的具体例子会更有说服力。'
-						},
-						{
-							title: '流利度',
-							score: 90,
-							content: '您的语速适中，表达流畅，很少出现停顿或冗余词。在4次回答中，仅有1次出现了明显的停顿，整体流利度表现优秀。语速为每分钟约175个字，处于理想范围。'
-						},
-						{
-							title: '准确度',
-							score: 85,
-							content: '您对产品特性的描述基本准确，能够清晰地传达核心价值。但在解释某些技术细节时有轻微的不准确。建议进一步熟悉产品的技术规格和核心参数，确保所有描述都完全准确。'
-						},
-						{
-							title: '语言表达',
-							score: 83,
-							content: '您的语言表达整体清晰，用词专业，能够使用行业术语增强专业感。但有时用词略显重复，可以通过丰富词汇量来增加表达的多样性。建议多积累专业词汇，尤其是能精准描述产品价值的关键词。'
-						}
-					],
-					suggestions: [
-						'在回答客户问题前，可以先简短重复一下客户的问题，表明您理解了他们的需求，如"关于您提到的价格问题..."',
-						'增加具体案例和数据支持，提高说服力。可以准备2-3个成功案例，在合适的时机分享。',
-						'适当使用反问句引导客户思考，如"您是否考虑过长期使用后的总体成本？"这样的问题可以引导客户从新的角度看问题。',
-						'在谈到产品优势时，可以结合客户所处的行业情况，使建议更有针对性。',
-						'练习如何简洁有力地总结对话内容，在每个销售环节结束时进行小结，帮助客户和自己明确当前进展。'
-					]
+					analysis: [],
+					suggestions: []
 				}
 			}
 		},
@@ -140,7 +108,42 @@
                 },
                 success: (res) => {
                     if (res.data && res.data.success) {
-                        this.reportData = res.data.data;
+                        const d = res.data.data;
+                        // 计算总体评分（平均分）
+                        const overall = Math.round(
+                            (d.organization.score + d.persuasiveness.score + d.fluency.score + d.pronunciation.score + d.expression.score) / 5
+                        );
+                        // 组装维度分数
+                        const dimensions = [
+                            { name: '语言组织能力', score: d.organization.score },
+                            { name: '说服力', score: d.persuasiveness.score },
+                            { name: '流利度', score: d.fluency.score },
+                            { name: '发音准确度', score: d.pronunciation.score },
+                            { name: '语音表达', score: d.expression.score }
+                        ];
+                        // 组装详细分析
+                        const analysis = [
+                            { title: '语言组织能力', score: d.organization.score, content: d.organization.analysis },
+                            { title: '说服力', score: d.persuasiveness.score, content: d.persuasiveness.analysis },
+                            { title: '流利度', score: d.fluency.score, content: d.fluency.analysis },
+                            { title: '发音准确度', score: d.pronunciation.score, content: d.pronunciation.analysis },
+                            { title: '语音表达', score: d.expression.score, content: d.expression.analysis }
+                        ];
+                        // 改进建议（如后端有单独字段可用，否则用分析文本）
+                        const suggestions = [
+                            d.organization.analysis,
+                            d.persuasiveness.analysis,
+                            d.fluency.analysis,
+                            d.pronunciation.analysis,
+                            d.expression.analysis
+                        ];
+                        this.report = {
+                            overall,
+                            dimensions,
+                            analysis,
+                            suggestions
+                        };
+                        this.initRadarChart();
                     } else {
                         uni.showToast({ title: '获取报告失败', icon: 'none' });
                     }
@@ -215,7 +218,7 @@
 					});
 					
 					uni.request({
-						url: `${this.apiBaseUrl}/reports/${reportId}`,
+						url: `${this.apiBaseUrl}/api/reports/${reportId}`,
 						success: (res) => {
 							if (res.data) {
 								console.log('获取报告成功:', res.data);
@@ -292,6 +295,7 @@
 		}
 	}
 </script>
+ 
 
 <style>
 	.container {
