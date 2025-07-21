@@ -9,10 +9,10 @@ from sqlalchemy import func
 import traceback
 import librosa
 from app.models.conversation import Conversation, Message
-from ..core.config import settings
-from ..utils import getds
-from ..models import scene
-from ..utils.personification_text_to_speach import text_to_speech
+from app.core.config import settings
+from app.utils import getds,combined_audio
+from app.models import scene
+from app.utils.personification_text_to_speach import text_to_speech
 from app.core.logger import logger, log_request, log_response, log_error
 from app.utils.search_vectorDB import vector_search
 from app.utils.audio import convert_mp3_16k, extract_words_from_lattice2
@@ -47,14 +47,22 @@ class ConversationService:
         os.makedirs(settings.BASE_DIR + "/tts", exist_ok=True)
         os.makedirs(settings.BASE_DIR + "/voice", exist_ok=True)
 
-    def analyze_practice(self, practice_id: int) -> dict:
+    def analyze_practice(self, practice_id: int, conversation_id: str, user_id: str) -> dict:
         """
         对练习进行分析打分，返回各项分数和分析文本
         """
+        practice_id =28 #todo
+        #conversation_id='0ee89692-1f81-45b8-b0c7-7292a9bf71fe'  #todo
         with SessionLocal() as db:
             practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
             if not practice:
                 raise ValueError(f"Practice record not found: {practice_id}")
+
+            audio_path = os.path.join(settings.file_path_voice,user_id,conversation_id)
+
+            file_name = f'{conversation_id}_combine.mp3'
+            output_path = os.path.join(audio_path,file_name)
+            file_path =combined_audio.combine_audios_in_folder(audio_path,output_path)
 
             # 1. 获取聊天历史
             chat_history = practice.chat_history or []
@@ -63,10 +71,10 @@ class ConversationService:
                                msg.get('from') == 'user' and msg.get('voiceUrl')]
 
             # 2. 语言组织能力、说服力（大模型分析，伪代码/接口）
-            # 你可以用OpenAI、Qwen等大模型API
+            # 可以用OpenAI、Qwen等大模型API
             def call_llm_for_ability(texts, ability_type):
                 # ability_type: "organization" or "persuasiveness"
-                # 伪代码：实际用你的大模型API
+                # 伪代码：实际用模型API
                 prompt = f"请对以下用户对话内容的{ability_type}进行1-100分打分，并给出简要分析：\n" + "\n".join(texts)
                 # result = call_your_llm_api(prompt)
                 # return result['score'], result['analysis']

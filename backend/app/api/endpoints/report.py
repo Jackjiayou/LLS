@@ -78,7 +78,9 @@ async def analyze_practice(
     """
     try:
         practice_id = request.get("practice_id")
-        result = conversation_service.analyze_practice(practice_id)
+        conversation_id = request.get("conversationId")
+        user_id = str(token["sub"])
+        result = conversation_service.analyze_practice(practice_id,conversation_id,user_id)
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"分析练习失败: {str(e)}")

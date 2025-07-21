@@ -1,7 +1,7 @@
 // 环境配置
 const ENV = {
     development: { 
-        apiBaseUrl: 'http://localhost:8000'
+        apiBaseUrl: 'http://localhost:8000' 
     },
     production: {
         apiBaseUrl: 'https://ai.dl-dd.com'
@@ -14,7 +14,7 @@ const currentEnv = process.env.NODE_ENV || 'production'
 // 导出配置
 export default { 
     //apiBaseUrl: ENV[currentEnv].apiBaseUrl
-    //apiBaseUrl:'http://localhost:8000',  
-    apiBaseUrl: 'https://ai.dl-dd.com'
+    apiBaseUrl:'http://localhost:8000',  
+    //apiBaseUrl: 'https://ai.dl-dd.com' 
     //apiBaseUrl:'http://119.3.210.173:8000'
 }   

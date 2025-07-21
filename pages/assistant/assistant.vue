@@ -98,7 +98,7 @@
 			<view class="dialog-container new-dialog">
 				<view class="dialog-close" @click="closeEndDialog">×</view>
 				<view class="dialog-icon">
-					<image src="/static/dialog-bubble.png" mode="aspectFit" />
+					<image :src="apiBaseUrl + '/uploads/static/dialog-bubble.png'" mode="aspectFit" />
 				</view>
 				<view class="dialog-title new-dialog-title">你确定要结束这次练习吗？</view>
 				<view class="dialog-buttons new-dialog-buttons">

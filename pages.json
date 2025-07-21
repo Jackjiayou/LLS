@@ -109,6 +109,12 @@
 			"style": {
 				"navigationBarTitleText": "选择音色"
 			}
+		},
+		{
+			"path": "pages/testechart/testechart",
+			"style": {
+				"navigationBarTitleText": "测试图表"
+			}
 		}
 	],
 	"globalStyle": {

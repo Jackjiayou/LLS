@@ -4,33 +4,17 @@
 			<text class="report-title">练习报告</text>
 			<text class="scene-name">{{sceneName}}</text>
 		</view>
-		
+        
 		<view class="report-content">
 			<!-- 整体评分 -->
-			<view class="score-section">
+			<view class="score-section vertical">
 				<view class="overall-score">
 					<text class="score-value">{{report.overall}}</text>
 					<text class="score-label">总体评分</text>
 				</view>
-				
-				<!-- 五维度评分雷达图 -->
 				<view class="radar-chart">
-					<canvas canvas-id="radarChart" id="radarChart" class="radar-canvas"></canvas>
-				</view> 
-				
-				<!-- 各项评分 -->
-<!-- 				<view class="dimension-scores">
-					<view class="dimension-item" v-for="(item, index) in report.dimensions" :key="index">
-						<view class="dimension-bar-wrapper">
-							<view class="dimension-name">{{item.name}}</view>
-							<view class="dimension-bar-container">
-								<view class="dimension-bar" :style="{width: item.score + '%'}">
-									<text class="dimension-score">{{item.score}}</text>
-								</view>
-							</view>
-						</view>
-					</view>
-				</view> -->
+					<uni-ec-canvas class="radar-canvas" id="radar-canvas" ref="canvas" canvas-id="radar-canvas" :ec="ec"></uni-ec-canvas>
+				</view>
 			</view>
 			
 			<!-- 详细分析 -->
@@ -91,13 +75,17 @@
 </template>
 
 <script>
-	import uCharts from '@/uni_modules/qiun-data-charts/js_sdk/u-charts/u-charts.js';
-	import config from '@/config.js'
+	import uniEcCanvas from '@/uni_modules/uni-ec-canvas/uni-ec-canvas.vue';
+	import * as echarts from '@/uni_modules/uni-ec-canvas/echarts';
+	import config from '@/config.js' 
 	
+	let chart = null;
+
 	export default {
+		components: { uniEcCanvas },
 		data() {
 			return {
-				radarSize: 300, // 默认
+				ec: { lazyLoad: true },
 				sceneId: 0,
 				sceneName: '',
 				apiBaseUrl: config.apiBaseUrl,
@@ -118,12 +106,15 @@
 			}
 		},
         onLoad(options) {
+            const conversationId = options.conversationId;
             const practiceId = options.practiceId;
             const token = uni.getStorageSync('token');
             uni.request({
                 url: `${this.apiBaseUrl}/api/report/analyze-practice`,
                 method: 'POST',
-                data: { practice_id: practiceId },
+                data: { practice_id: practiceId,
+                        conversationId:conversationId
+                },
                 header: {
                     'Authorization': `Bearer ${token}`, 
                     'Content-Type': 'application/json'
@@ -166,7 +157,7 @@
                             suggestions
                         };
                         this.$nextTick(() => {
-                            this.initRadarChart();
+                            this.$refs.canvas.init(this.initChart);
                         });
                     } else {
                         uni.showToast({ title: '获取报告失败', icon: 'none' });
@@ -175,53 +166,81 @@
             });
         },
 		onReady() {
-			const sysInfo = uni.getSystemInfoSync();
-			this.radarSize = Math.floor(sysInfo.windowWidth * 0.9);
-			this.initRadarChart();
+			// 初始化echarts雷达图
+			this.$refs.canvas.init(this.initChart);
 		},
-		methods: {
-			initRadarChart() {
-				const ctx = uni.createCanvasContext('radarChart', this);
-				const size = this.radarSize || 300;
-				const radarChart = new uCharts({
-					type: 'radar',
-					context: ctx,
-					width: size,
-					height: size,
-					categories: this.report.dimensions.map(item => item.name),
-					series: [{
-						name: '评分',
-						data: this.report.dimensions.map(item => item.score)
-					}],
-					animation: true,
-					background: '#FFFFFF',
-					padding: [size * 0.13, size * 0.13, size * 0.13, size * 0.13], // 13% padding，减小让图更居中
-					legend: {
-						show: false
+		methods: {  
+			initChart(canvas, width, height, dpr) {
+				chart = echarts.init(canvas, null, {
+					width: width,
+					height: height,
+					devicePixelRatio: dpr
+				});
+				canvas.setChart(chart);
+				// 动态生成雷达图option
+				const indicators = this.report.dimensions.map(item => ({ name: item.name, max: 100 }));
+				const values = this.report.dimensions.map(item => item.score);
+				const option = {
+					title: {
+					
+						left: 'center',
+						top: 10,
+						textStyle: {
+							fontSize: 16
+						}
 					},
+					tooltip: {},
 					radar: {
-						gridType: 'radar',
-						gridColor: '#ddd',
-						gridCount: 4,
-						labelColor: '#333',
-						labelFontSize: Math.floor(size * 0.055), // 稍大
+						indicator: indicators,
+						radius: '70%',
+						splitNumber: 4,
+						shape: 'polygon',
 						splitArea: {
-							show: true,
 							areaStyle: {
 								color: ['rgba(16,185,129,0.1)', 'rgba(16,185,129,0.2)', 'rgba(16,185,129,0.3)', 'rgba(16,185,129,0.4)']
 							}
 						},
-						dataLabel: true,
-						dataLabelColor: '#10b981',
-						dataLabelFontSize: Math.floor(size * 0.045) // 稍大
-					},
-					extra: {
-						radar: {
-							linearType: 'custom',
-							labelShow: true
+						axisLine: {
+							lineStyle: {
+								color: '#10b981'
+							}
+						},
+						splitLine: {
+							lineStyle: {
+								color: '#10b981'
+							}
+						},
+						name: {
+							textStyle: {
+								color: '#333',
+								fontSize: 14
+							}
 						}
-					}
-				});
+					},
+					series: [
+						{
+							name: '评分',
+							type: 'radar',
+							data: [
+								{
+									value: values,
+									name: '评分',
+									areaStyle: {
+										color: 'rgba(16,185,129,0.4)'
+									},
+									lineStyle: {
+										color: '#10b981'
+									},
+									itemStyle: {
+										color: '#10b981'
+									}
+								}
+							]
+						}
+					]
+				};
+				chart.setOption(option);
+				return chart;
 			},
 			scrollToAnalysis(index) {
 				this.activeAnalysisIndex = index;
@@ -230,7 +249,7 @@
 					uni.pageScrollTo({
 						selector: `#analysis-${index}`,
 						duration: 300,
-						offsetTop: 120 // 可根据头部高度微调
+						offsetTop: 120
 					});
 				});
 			},
@@ -300,7 +319,7 @@
 								};
 								
 								this.report = formattedReport;
-								this.initRadarChart();
+								this.$refs.canvas.init(this.initChart);
 							}
 						},
 						fail: (err) => {
@@ -348,6 +367,7 @@
 		border-radius: 12rpx 12rpx 0 0;
 		text-align: center;
 		margin-bottom: 20rpx;
+		position: relative;
 	}
 	
 	.report-title {
@@ -372,9 +392,20 @@
 		margin-bottom: 20rpx;
 	}
 	
+	.score-section.vertical {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		background-color: #fff;
+		border-radius: 12rpx;
+		padding: 20rpx 10rpx 10rpx 10rpx;
+		margin-bottom: 20rpx;
+		min-height: 500rpx;
+	}
+	
 	.overall-score {
 		text-align: center;
-		margin-bottom: 30rpx;
+		margin-bottom: 4rpx;
 	}
 	
 	.score-value {
@@ -390,11 +421,10 @@
 	}
 	
 	.radar-chart {
-		width: 90vw;
-		height: 90vw;
+		width: 100%;
+		height: 500rpx;
 		max-width: 700px;
-		max-height: 700px;
-		margin: 0 auto 30rpx auto;
+		margin: 0 auto;
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -402,49 +432,8 @@
 	
 	.radar-canvas {
 		width: 100%;
-		height: 100%;
-	}
-	
-	.dimension-scores {
-		margin-top: 20rpx;
-	}
-	
-	.dimension-item {
-		margin-bottom: 15rpx;
-	}
-	
-	.dimension-bar-wrapper {
-		display: flex;
-		align-items: center;
-	}
-	
-	.dimension-name {
-		width: 200rpx;
-		font-size: 28rpx;
-		color: #333;
-	}
-	
-	.dimension-bar-container {
-		flex: 1;
-		height: 40rpx;
-		background-color: #e0e0e0;
-		border-radius: 20rpx;
-		overflow: hidden;
-	}
-	
-	.dimension-bar {
-		height: 100%;
-		background-color: #10b981;
-		border-radius: 20rpx;
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		padding-right: 10rpx;
-	}
-	
-	.dimension-score {
-		color: #fff;
-		font-size: 24rpx;
+		height: 500rpx;
+		display: block;
 	}
 	
 	.analysis-section, .suggestion-section {

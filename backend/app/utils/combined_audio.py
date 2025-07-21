@@ -1,15 +1,7 @@
 from pydub import AudioSegment
 import os
-# 加载多个音频
-audio1 = AudioSegment.from_wav(r"/uploads/voice/介绍双迪标准.wav")
-audio2 = AudioSegment.from_wav(r"/uploads/voice/卡曼公司是双迪.wav")
-audio3 = AudioSegment.from_wav(r"/uploads/voice/今天天气怎么样标准的.wav")
-
-# 合并音频（顺序拼接）
-combined = audio1 + audio2 + audio3
-
-# 导出为新文件
-combined.export(r"E:\work\code\test_uniapp\test_0424\backend\uploads\combined\combined.wav", format="wav")
+import librosa
+import numpy as np
 
 def combine_audios_in_folder(folder_path, output_path):
     """
@@ -44,3 +36,49 @@ def combine_audios_in_folder(folder_path, output_path):
 
 # 示例用法：
 # combine_audios_in_folder('/path/to/folder', '/path/to/output/combined.wav')
+
+
+def extract_fluency_features(audio_path):
+    # 加载音频文件
+    y, sr = librosa.load(audio_path, sr=None)
+
+    # 帧级参数（帧长 2048，跳帧 512）
+    hop_length = 512
+    frame_length = 2048
+
+    # 1. MFCC（可用于分析发音清晰度、音素变化）
+    mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+    mfcc_delta = librosa.feature.delta(mfccs)
+    mfcc_delta_std = np.std(mfcc_delta)
+
+    # 2. 能量（RMS）用于估算停顿
+    rms = librosa.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length)[0]
+    avg_rms = np.mean(rms)
+    num_pauses = np.sum(rms < 0.02)  # 低能量帧数，估算停顿
+
+    # 3. Zero-Crossing Rate（用于无声段检测、修正语音等）
+    zcr = librosa.feature.zero_crossing_rate(y=y, frame_length=frame_length, hop_length=hop_length)[0]
+    avg_zcr = np.mean(zcr)
+
+    # 4. 语速（估算发声段总长度 vs 整体长度）
+    duration = librosa.get_duration(y=y, sr=sr)
+    voiced_ratio = np.sum(rms > 0.02) * hop_length / sr / duration  # 发声段占比
+    speech_rate_estimate = voiced_ratio / duration  # 越大可能越流利
+
+    # 输出特征
+    return {
+        'mfcc_delta_std': mfcc_delta_std,
+        'avg_rms': avg_rms,
+        'num_pauses': num_pauses,
+        'avg_zcr': avg_zcr,
+        'voiced_ratio': voiced_ratio,
+        'speech_rate_estimate': speech_rate_estimate,
+        'duration_sec': duration
+    }
+
+# 示例使用
+# audio_path = r"/uploads/voice/介绍双迪标准.wav"
+# features = extract_fluency_features(audio_path)
+#
+# for k, v in features.items():
+#     print(f"{k}: {v:.4f}")

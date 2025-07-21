@@ -96,7 +96,7 @@
 			<view class="dialog-container new-dialog">
 				<view class="dialog-close" @click="closeEndDialog">×</view>
 				<view class="dialog-icon">
-					<image src="/static/dialog-bubble.png" mode="aspectFit" />
+					<image :src="apiBaseUrl + '/uploads/static/dialog-bubble.png'" mode="aspectFit" />
 				</view>
 				<view class="dialog-title new-dialog-title">你确定要结束这次练习吗？</view>
 				<view class="dialog-buttons new-dialog-buttons">
@@ -309,7 +309,8 @@
                     const formattedMessages = realMessages.map(msg => ({
                         from: msg.from,
                         text: msg.text,
-                        voiceUrl: msg.voiceUrl || '',
+                        voiceUrl: msg.originVoiceUrl || '',
+                        // originVoiceUrl: msg.originVoiceUrl || '',
                         duration: parseInt(msg.duration) || 0,
                         suggestion: msg.suggestion || '',
                         timestamp: msg.timestamp || new Date().toISOString()
@@ -367,13 +368,13 @@
 				// });
 			},
 			// 预下载音频文件
-			preDownloadVoice(voiceUrl) {
-				if (!voiceUrl || !voiceUrl.startsWith('http')) return;
+			preDownloadVoice(originVoiceUrl) {
+				if (!originVoiceUrl || !originVoiceUrl.startsWith('http')) return;
 				uni.downloadFile({
-					url: voiceUrl,
+					url: originVoiceUrl,
 					success: (res) => {
 						if (res.statusCode === 200) {
-							const idx = this.messages.findIndex(msg => msg.voiceUrl === voiceUrl);
+							const idx = this.messages.findIndex(msg => msg.originVoiceUrl === originVoiceUrl);
 							if (idx !== -1) {
 								this.$set(this.messages[idx], 'voiceUrl', res.tempFilePath);
 							}
@@ -411,7 +412,8 @@
 						const realMsg = {
 							from: 'customer',
 							text: response.data.text,
-							voiceUrl: response.data.voiceUrl,
+							voiceUrl: '', // 本地路径，后续下载后赋值
+							originVoiceUrl: response.data.voiceUrl, // 保存原始URL
 							duration: response.data.duration,
 							timestamp: new Date().toISOString(),
 							isPlaying: false
@@ -617,6 +619,7 @@
 					from: 'user',
 					text: '语音识别中...',
 					voiceUrl: voicePath, // 本地临时文件
+					originVoiceUrl: '', // 初始为空
 					duration: '',
 					suggestion: '',
 					polishedText: '',
@@ -653,6 +656,7 @@
 									from: 'user',
 									text: data.text,
 									voiceUrl: data.voiceUrl || voicePath,
+									originVoiceUrl: data.voiceUrl || '', // 保存原始URL
 									duration: duration.toString(),
 									suggestion: '',
 									polishedText: '',
@@ -1011,14 +1015,16 @@
 					delta: 2 // 返回上上页
 				});
 			},
-			endAndViewReport() {
+			endAndViewReport() {  
                 this.saveChatHistory()
 				// 发送所有对话记录到后端生成报告
-                uni.showLoading({ title: '生成报告中...' });
-                 
+                uni.showLoading({ title: '生成报告中... ' }); 
+                // uni.navigateTo({ 
+                //      url: `/pages/testechart/testechart`
+                //  });
                 uni.navigateTo({
-                    url: `/pages/report/report?practiceId=${this.practiceId}`
-                });
+                     url:  `/pages/report/report?practiceId=${this.practiceId}&conversationId=${this.conversationId}`
+                 });
                        
 				// this.generateReport();
 				// // 跳转到新版报告页面
