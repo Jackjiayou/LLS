@@ -56,7 +56,7 @@
 			</view>
 			
 			<!-- 改进建议 -->
-			<view class="suggestion-section">
+<!-- 			<view class="suggestion-section">
 				<view class="section-title">改进建议</view>
 				
 				<view class="suggestion-list">
@@ -67,7 +67,7 @@
 						</view>
 					</view>
 				</view>
-			</view>
+			</view> -->
 		</view>
 		
 		<view class="action-buttons">

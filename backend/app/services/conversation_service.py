@@ -53,7 +53,7 @@ class ConversationService:
     async def combine_video(self, practice_id: int, conversation_id: str, user_id: str):
         try:
             practice_id = 183  # todo
-            conversation_id = 'ce58b175-1b93-48dc-b748-0ed2540f69a4'  # todo
+            conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
 
             audio_path = os.path.join(settings.file_path_voice, user_id, conversation_id)
             os.makedirs(audio_path, exist_ok=True)
@@ -73,7 +73,7 @@ class ConversationService:
         对练习进行分析打分，返回各项分数和分析文本
         """
         practice_id = 183  # todo
-        conversation_id = 'ce58b175-1b93-48dc-b748-0ed2540f69a4'  # todo
+        conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
         try:
             with SessionLocal() as db:
                 practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
@@ -97,8 +97,46 @@ class ConversationService:
                     # ability_type: "organization" or "persuasiveness"
                     # 伪代码：实际用模型API
                     # 构建系统消息（包含角色定义和规则）
-                    prompt = (f"请对以下用户对话内容和分析的记录对{ability_type}进行1-100分打分（score）和分析（analysis），输出格式请只输出如下格式：score: 85 analysis: 你的分析内容，以下对话中user是用户，"
-                              f"他们在模拟销售场景，user是大健康行业的销售人员，给出对user回答的简要分析，括号中的“改进建议”和“示例”是对user的回答做的分析，输出结构格式为json格式的score和analysis：\n") +"\n"+texts
+                    if ability_type == "说服力":
+                        prompt = "请对以下用户（user）与客户（customer）的对话内容的说服力进行1-100分打分和分析。\n\n" + \
+                                 "评分标准：\n" + \
+                                 "- 90-100分：极具说服力，能有效引导客户决策\n" + \
+                                 "- 80-89分：说服力较强，表达清晰有效\n" + \
+                                 "- 70-79分：说服力一般，基本能表达观点\n" + \
+                                 "- 60-69分：说服力较弱，缺乏说服技巧\n" + \
+                                 "- 60分以下：说服力很差，无法有效沟通\n\n" + \
+                                 "分析要点：\n" + \
+                                 "1. 是否有效识别并回应客户需求\n" + \
+                                 "2. 是否提供有力的论据和案例\n" + \
+                                 "3. 是否运用了合适的说服技巧\n" + \
+                                 "4. 是否处理了客户异议\n" + \
+                                 "5. 是否建立了信任关系\n\n" + \
+                                 "注意：括号中的内容是对用户回答的改进建议和示例，是更好的回答方式。请对比用户（user）实际回答与建议的改进方案以及结合客户（customer）的问题来评价说服力。\n\n" + \
+                                 "对话记录：\n" + texts + "\n\n" + \
+                                 '请输出JSON格式：{"score": 分数, "analysis": "详细分析"}'
+                    elif ability_type == "语言组织能力":
+                        prompt = f"""请对以下用户（user）与客户（customer）的对话内容的语言组织能力进行1-100分打分和分析。
+
+                                    评分标准：
+                                    - 90-100分：语言组织极佳，结构清晰，逻辑严密
+                                    - 80-89分：语言组织良好，结构清晰，逻辑合理
+                                    - 70-79分：语言组织一般，基本清晰，偶有混乱
+                                    - 60-69分：语言组织较弱，结构不够清晰
+                                    - 60分以下：语言组织很差，结构混乱
+                                    
+                                    分析要点：
+                                    1. 语言结构是否清晰有序
+                                    2. 逻辑层次是否分明
+                                    3. 表达是否简洁明了
+                                    4. 是否有效运用过渡词
+                                    5. 是否避免了重复和冗余
+                                    
+                                    注意：括号中的内容是对用户回答的改进建议和示例，是更好的回答方式。请对比用户（user）实际回答与建议的改进方案以及结合客户（customer）的问题来评价语言组织能力。
+                                    
+                                    对话记录：
+                                    {texts}
+                                    
+                                    请输出JSON格式：{{"score": 分数, "analysis": "详细分析"}}"""
 
                     system_message = {
                         'role': 'system',
@@ -147,12 +185,13 @@ class ConversationService:
             traceback.print_exc()
             return {"persuasiveness": {"score": 0, "analysis": "分析失败"}}
 
-    async def  analyze_organization(self, practice_id: int,output_path :str, conversation_id: str, user_id: str) -> dict:
+    async def analyze_organization(self, practice_id: int, output_path: str, conversation_id: str,
+                                                  user_id: str) -> dict:
         """
         对练习进行分析打分，返回各项分数和分析文本
         """
         practice_id = 183  # todo
-        conversation_id = 'ce58b175-1b93-48dc-b748-0ed2540f69a4'  # todo
+        conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
         try:
             with SessionLocal() as db:
                 practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
@@ -166,8 +205,8 @@ class ConversationService:
                     {"from": msg.get("from"), "text": msg.get("text"), "suggestion": msg.get("suggestion")}
                     for msg in chat_history if msg.get("from") and msg.get("text")
                 ]
-                dialogue_str = "\n".join([f"{msg['from']}: {msg['text']}" + (f" ( {msg['suggestion']})" if msg.get('suggestion') else "") for msg in dialogue_for_llm])
-
+                dialogue_str = "\n".join([f"{msg['from']}: {msg['text']}" + (
+                    f" (建议: {msg['suggestion']})" if msg.get('suggestion') else "") for msg in dialogue_for_llm])
 
                 # 2. 语言组织能力、说服力（大模型分析，伪代码/接口）
                 # 可以用OpenAI、Qwen等大模型API
@@ -176,8 +215,46 @@ class ConversationService:
                     # ability_type: "organization" or "persuasiveness"
                     # 伪代码：实际用模型API
                     # 构建系统消息（包含角色定义和规则）
-                    prompt = (f"请对以下用户对话内容和分析的记录对{ability_type}进行1-100分打分（score）和分析（analysis），输出格式请只输出如下格式：score: 85 analysis: 你的分析内容，以下对话中user是用户，"
-                              f"他们在模拟销售场景，user是大健康行业的销售人员，给出对user回答的简要分析，括号中的“改进建议”和“示例”是对user的回答做的分析，输出结构格式为json格式的score和analysis：\n") +"\n"+texts
+                    if ability_type == "说服力":
+                        prompt = "请对以下用户（user）与客户（customer）的对话内容的说服力进行1-100分打分和分析。\n\n" + \
+                                 "评分标准：\n" + \
+                                 "- 90-100分：极具说服力，能有效引导客户决策\n" + \
+                                 "- 80-89分：说服力较强，表达清晰有效\n" + \
+                                 "- 70-79分：说服力一般，基本能表达观点\n" + \
+                                 "- 60-69分：说服力较弱，缺乏说服技巧\n" + \
+                                 "- 60分以下：说服力很差，无法有效沟通\n\n" + \
+                                 "分析要点：\n" + \
+                                 "1. 是否有效识别并回应客户需求\n" + \
+                                 "2. 是否提供有力的论据和案例\n" + \
+                                 "3. 是否运用了合适的说服技巧\n" + \
+                                 "4. 是否处理了客户异议\n" + \
+                                 "5. 是否建立了信任关系\n\n" + \
+                                 "注意：括号中的内容是对用户回答的改进建议和示例，是更好的回答方式。请对比用户（user）实际回答与建议的改进方案以及结合客户（customer）的问题来评价说服力。\n\n" + \
+                                 "对话记录：\n" + texts + "\n\n" + \
+                                 '请输出JSON格式：{"score": 分数, "analysis": "详细分析"}'
+                    elif ability_type == "语言组织能力":
+                        prompt = f"""请对以下用户（user）与客户（customer）的对话内容的语言组织能力进行1-100分打分和分析。
+
+                                     评分标准：
+                                     - 90-100分：语言组织极佳，结构清晰，逻辑严密
+                                     - 80-89分：语言组织良好，结构清晰，逻辑合理
+                                     - 70-79分：语言组织一般，基本清晰，偶有混乱
+                                     - 60-69分：语言组织较弱，结构不够清晰
+                                     - 60分以下：语言组织很差，结构混乱
+
+                                     分析要点：
+                                     1. 语言结构是否清晰有序
+                                     2. 逻辑层次是否分明
+                                     3. 表达是否简洁明了
+                                     4. 是否有效运用过渡词
+                                     5. 是否避免了重复和冗余
+
+                                     注意：括号中的内容是对用户回答的改进建议和示例，是更好的回答方式。请对比用户（user）实际回答与建议的改进方案以及结合客户（customer）的问题来评价语言组织能力。
+
+                                     对话记录：
+                                     {texts}
+
+                                     请输出JSON格式：{{"score": 分数, "analysis": "详细分析"}}"""
 
                     system_message = {
                         'role': 'system',
@@ -197,7 +274,8 @@ class ConversationService:
                         except Exception as e:
                             print("JSON解析失败:", e, json_str)
                     # 2. 尝试提取 score: xx analysis: ...
-                    match2 = re.search(r'score[:：]\s*(\d+)[,， ]*analysis[:：]?\s*(.*)', str_reslt, re.IGNORECASE|re.DOTALL)
+                    match2 = re.search(r'score[:：]\s*(\d+)[,， ]*analysis[:：]?\s*(.*)', str_reslt,
+                                       re.IGNORECASE | re.DOTALL)
                     if match2:
                         score = int(match2.group(1))
                         analysis = match2.group(2).strip()
@@ -206,14 +284,11 @@ class ConversationService:
                     print("大模型返回格式无法解析:", str_reslt)
                     return 0, "大模型返回格式错误"
 
-
-                org_score, org_analysis = call_llm_for_ability(dialogue_str, "语言组织能力")
-
-
+                pers_score, pers_analysis = call_llm_for_ability(dialogue_str, "语言组织能力")
 
                 # 5. 汇总
                 score_json = {
-                    "organization": {"score": org_score, "analysis": org_analysis}
+                    "organization": {"score": pers_score, "analysis": pers_analysis}
                 }
 
                 # 存储到practice
@@ -224,7 +299,7 @@ class ConversationService:
         except Exception as e:
             logger.error(f"开始练习失败: {str(e)}")
             traceback.print_exc()
-            return {"organization": {"score": 0, "analysis": "分析失败"}}
+            return {"persuasiveness": {"score": 0, "analysis": "分析失败"}}
 
     async def analyze_fluency_expression_pronunciation(self, practice_id: int, output_path: str, conversation_id: str, user_id: str) -> dict:
         """
@@ -233,7 +308,7 @@ class ConversationService:
 
         try:
             practice_id = 183  # todo
-            conversation_id = 'ce58b175-1b93-48dc-b748-0ed2540f69a4'  # todo
+            conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
 
             audio_path = os.path.join(settings.file_path_voice, user_id, conversation_id)
             # os.makedirs(audio_path, exist_ok=True)
