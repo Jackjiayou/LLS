@@ -13,7 +13,10 @@
 					<text class="score-label">总体评分</text>
 				</view>
 				<view class="radar-chart">
-					<uni-ec-canvas class="radar-canvas" id="radar-canvas" ref="canvas" canvas-id="radar-canvas" :ec="ec"></uni-ec-canvas>
+					<view v-if="loading" class="loading-container">
+						<text class="loading-text">分析中...</text>
+					</view>
+					<uni-ec-canvas v-else class="radar-canvas" id="radar-canvas" ref="canvas" canvas-id="radar-canvas" :ec="ec"></uni-ec-canvas>
 				</view>
 			</view>
 			
@@ -102,75 +105,98 @@
 					suggestions: []
 				},
 				activeAnalysisIndex: 0,
-				navScrollIntoView: ''
+				navScrollIntoView: '',
+				loading: false
 			}
 		},
         onLoad(options) {
+            this.loading = true;
+            uni.showLoading({ title: '音频合并中...' });
             const conversationId = options.conversationId;
             const practiceId = options.practiceId;
             const token = uni.getStorageSync('token');
+            const header = {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+
+            // 1. 先调用音频合并接口
             uni.request({
-                url: `${this.apiBaseUrl}/api/report/analyze-practice`,
+                url: this.apiBaseUrl + '/api/report/combine-audio',
                 method: 'POST',
-                data: { practice_id: practiceId,
-                        conversationId:conversationId
-                },
-                header: {
-                    'Authorization': `Bearer ${token}`, 
-                    'Content-Type': 'application/json'
-                },
+                data: { practice_id: practiceId, conversationId },
+                header,
                 success: (res) => {
                     if (res.data && res.data.success) {
-                        const d = res.data.data;
-                        // 计算总体评分（平均分）
-                        const overall = Math.round(
-                            (d.organization.score + d.persuasiveness.score + d.fluency.score + d.pronunciation.score + d.expression.score) / 5
-                        );
-                        // 组装维度分数
-                        const dimensions = [
-                            { name: '语言组织能力', score: d.organization.score },
-                            { name: '说服力', score: d.persuasiveness.score },
-                            { name: '流利度', score: d.fluency.score },
-                            { name: '发音准确度', score: d.pronunciation.score },
-                            { name: '语音表达', score: d.expression.score }
-                        ];
-                        // 组装详细分析
-                        const analysis = [
-                            { title: '语言组织能力', score: d.organization.score, content: d.organization.analysis },
-                            { title: '说服力', score: d.persuasiveness.score, content: d.persuasiveness.analysis },
-                            { title: '流利度', score: d.fluency.score, content: d.fluency.analysis },
-                            { title: '发音准确度', score: d.pronunciation.score, content: d.pronunciation.analysis },
-                            { title: '语音表达', score: d.expression.score, content: d.expression.analysis }
-                        ];
-                        // 改进建议（如后端有单独字段可用，否则用分析文本）
-                        const suggestions = [
-                            d.organization.analysis,
-                            d.persuasiveness.analysis,
-                            d.fluency.analysis,
-                            d.pronunciation.analysis,
-                            d.expression.analysis
-                        ];
-                        this.report = {
-                            overall,
-                            dimensions,
-                            analysis,
-                            suggestions
-                        };
-                        this.$nextTick(() => {
-                            this.$refs.canvas.init(this.initChart);
+                        // 合并成功，拿到 file_path
+                        const filePath = res.data.file_path;
+                        uni.hideLoading();
+                        
+                        // 2. 并发调用两个分析接口
+                        uni.showLoading({ title: '分析中...' });
+                        Promise.all([
+                            this.fetchOrganization('/api/report/analyze-organization', { practice_id: practiceId, conversationId, output_path: filePath }, header),
+                            this.fetchPersuasiveness('/api/report/analyze-persuasiveness', { practice_id: practiceId, conversationId, output_path: filePath }, header),
+                            this.fetchFluencyExpressionPronunciation('/api/report/analyze-fluency-expression-pronunciation', { practice_id: practiceId, conversationId, output_path: filePath }, header)
+                        ]).then(([org, pers, fluExpPron]) => {
+                            // 组装数据
+                            const overall = Math.round(
+                                (org.score + pers.score + fluExpPron.fluency.score + fluExpPron.pronunciation.score + fluExpPron.expression.score) / 5
+                            );
+                            const dimensions = [
+                                { name: '语言组织能力', score: org.score },
+                                { name: '说服力', score: pers.score },
+                                { name: '流利度', score: fluExpPron.fluency.score },
+                                { name: '发音准确度', score: fluExpPron.pronunciation.score },
+                                { name: '语音表达', score: fluExpPron.expression.score }
+                            ];
+                            const analysis = [
+                                { title: '语言组织能力', score: org.score, content: org.analysis },
+                                { title: '说服力', score: pers.score, content: pers.analysis },
+                                { title: '流利度', score: fluExpPron.fluency.score, content: fluExpPron.fluency.analysis },
+                                { title: '发音准确度', score: fluExpPron.pronunciation.score, content: fluExpPron.pronunciation.analysis },
+                                { title: '语音表达', score: fluExpPron.expression.score, content: fluExpPron.expression.analysis }
+                            ];
+                            const suggestions = [
+                                org.analysis, pers.analysis, fluExpPron.fluency.analysis, fluExpPron.pronunciation.analysis, fluExpPron.expression.analysis
+                            ];
+                            this.report = { overall, dimensions, analysis, suggestions };
+                            
+                            // 所有数据返回后显示雷达图
+                            this.$nextTick(() => {
+                                if (this.$refs.canvas) {
+                                    this.$refs.canvas.init(this.initChart);
+                                }
+                            });
+                        }).catch(err => {
+                            uni.showToast({ title: '获取报告失败', icon: 'none' });
+                        }).finally(() => {
+                            this.loading = false;
+                            uni.hideLoading();
                         });
                     } else {
-                        uni.showToast({ title: '获取报告失败', icon: 'none' });
+                        uni.showToast({ title: '音频合并失败', icon: 'none' });
+                        this.loading = false;
+                        uni.hideLoading();
                     }
+                },
+                fail: () => {
+                    uni.showToast({ title: '音频合并失败', icon: 'none' });
+                    this.loading = false;
+                    uni.hideLoading();
                 }
             });
         },
 		onReady() {
-			// 初始化echarts雷达图
-			this.$refs.canvas.init(this.initChart);
+			// 初始化echarts雷达图 - 只在数据加载完成后调用
+			// this.$refs.canvas.init(this.initChart);
 		},
 		methods: {  
 			initChart(canvas, width, height, dpr) {
+				if (!canvas) {
+					console.warn('Canvas is not available');
+					return;
+				}
 				chart = echarts.init(canvas, null, {
 					width: width,
 					height: height,
@@ -250,6 +276,51 @@
 						selector: `#analysis-${index}`,
 						duration: 300,
 						offsetTop: 120
+					});
+				});
+			},
+			fetchOrganization(url, data, header) {
+				return new Promise((resolve, reject) => {
+					uni.request({
+						url: this.apiBaseUrl + url,
+						method: 'POST',
+						data,
+						header,
+						success: res => {
+							if (res.data && res.data.success) resolve(res.data.data);
+							else reject(res);
+						},
+						fail: reject
+					});
+				});
+			},
+			fetchPersuasiveness(url, data, header) {
+				return new Promise((resolve, reject) => {
+					uni.request({
+						url: this.apiBaseUrl + url,
+						method: 'POST',
+						data,
+						header,
+						success: res => {
+							if (res.data && res.data.success) resolve(res.data.data);
+							else reject(res);
+						},
+						fail: reject
+					});
+				});
+			},
+			fetchFluencyExpressionPronunciation(url, data, header) {
+				return new Promise((resolve, reject) => {
+					uni.request({
+						url: this.apiBaseUrl + url,
+						method: 'POST',
+						data,
+						header,
+						success: res => {
+							if (res.data && res.data.success) resolve(res.data.data);
+							else reject(res);
+						},
+						fail: reject
 					});
 				});
 			},
@@ -434,6 +505,21 @@
 		width: 100%;
 		height: 500rpx;
 		display: block;
+	}
+
+	.loading-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 500rpx;
+		background-color: rgba(255, 255, 255, 0.8);
+		border-radius: 12rpx;
+	}
+
+	.loading-text {
+		font-size: 36rpx;
+		color: #10b981;
+		font-weight: bold;
 	}
 	
 	.analysis-section, .suggestion-section {
