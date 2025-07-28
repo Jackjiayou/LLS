@@ -33,6 +33,7 @@ def combine_audios_in_folder(folder_path, output_path):
     # 导出合并后的音频
     combined.export(output_path, format=output_path.split('.')[-1])
     print(f"\n合并完成，输出文件: {output_path}")
+    return  output_path
 
 # 示例用法：
 # combine_audios_in_folder('/path/to/folder', '/path/to/output/combined.wav')

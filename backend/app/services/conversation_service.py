@@ -5,6 +5,9 @@ import json
 import random
 import logging
 import os
+import  asyncio
+from app.utils.xfyun_asr import  run_xfyun_asr
+from app.utils.data import request_data, APPId, APIKey, APISecret, request_url
 from sqlalchemy import func
 import traceback
 import librosa
@@ -47,82 +50,311 @@ class ConversationService:
         os.makedirs(settings.BASE_DIR + "/tts", exist_ok=True)
         os.makedirs(settings.BASE_DIR + "/voice", exist_ok=True)
 
-    def analyze_practice(self, practice_id: int, conversation_id: str, user_id: str) -> dict:
+    async def combine_video(self, practice_id: int, conversation_id: str, user_id: str):
+        try:
+            practice_id = 183  # todo
+            conversation_id = 'ce58b175-1b93-48dc-b748-0ed2540f69a4'  # todo
+
+            audio_path = os.path.join(settings.file_path_voice, user_id, conversation_id)
+            os.makedirs(audio_path, exist_ok=True)
+            file_name = f'{conversation_id}_combine.mp3'
+            output_path = os.path.join(audio_path, file_name)
+            file_path = combined_audio.combine_audios_in_folder(audio_path, output_path)
+
+            return file_path
+        except Exception as e:
+            logger.error(f"combine_video失败: {str(e)}")
+            traceback.print_exc()
+
+            return ''
+
+    async def  analyze_persuasiveness(self, practice_id: int,output_path :str, conversation_id: str, user_id: str) -> dict:
         """
         对练习进行分析打分，返回各项分数和分析文本
         """
-        practice_id =28 #todo
-        #conversation_id='0ee89692-1f81-45b8-b0c7-7292a9bf71fe'  #todo
-        with SessionLocal() as db:
-            practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
-            if not practice:
-                raise ValueError(f"Practice record not found: {practice_id}")
+        practice_id = 183  # todo
+        conversation_id = 'ce58b175-1b93-48dc-b748-0ed2540f69a4'  # todo
+        try:
+            with SessionLocal() as db:
+                practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+                if not practice:
+                    raise ValueError(f"Practice record not found: {practice_id}")
 
-            audio_path = os.path.join(settings.file_path_voice,user_id,conversation_id)
+                # 1. 获取聊天历史
+                chat_history = practice.chat_history or []
 
+                dialogue_for_llm = [
+                    {"from": msg.get("from"), "text": msg.get("text"), "suggestion": msg.get("suggestion")}
+                    for msg in chat_history if msg.get("from") and msg.get("text")
+                ]
+                dialogue_str = "\n".join([f"{msg['from']}: {msg['text']}" + (f" (建议: {msg['suggestion']})" if msg.get('suggestion') else "") for msg in dialogue_for_llm])
+
+
+                # 2. 语言组织能力、说服力（大模型分析，伪代码/接口）
+                # 可以用OpenAI、Qwen等大模型API
+                def call_llm_for_ability(texts, ability_type):
+                    import re
+                    # ability_type: "organization" or "persuasiveness"
+                    # 伪代码：实际用模型API
+                    # 构建系统消息（包含角色定义和规则）
+                    prompt = (f"请对以下用户对话内容和分析的记录对{ability_type}进行1-100分打分（score）和分析（analysis），输出格式请只输出如下格式：score: 85 analysis: 你的分析内容，以下对话中user是用户，"
+                              f"他们在模拟销售场景，user是大健康行业的销售人员，给出对user回答的简要分析，括号中的“改进建议”和“示例”是对user的回答做的分析，输出结构格式为json格式的score和analysis：\n") +"\n"+texts
+
+                    system_message = {
+                        'role': 'system',
+                        'content': prompt
+                    }
+
+                    messages = [system_message]
+                    str_reslt = getds.get_response_qwen(messages)
+
+                    # 1. 尝试提取 {...} 之间的内容
+                    match = re.search(r'\{.*?\}', str_reslt, re.DOTALL)
+                    if match:
+                        json_str = match.group(0)
+                        try:
+                            result = json.loads(json_str)
+                            return result['score'], result['analysis']
+                        except Exception as e:
+                            print("JSON解析失败:", e, json_str)
+                    # 2. 尝试提取 score: xx analysis: ...
+                    match2 = re.search(r'score[:：]\s*(\d+)[,， ]*analysis[:：]?\s*(.*)', str_reslt, re.IGNORECASE|re.DOTALL)
+                    if match2:
+                        score = int(match2.group(1))
+                        analysis = match2.group(2).strip()
+                        return score, analysis
+                    # 3. 兜底
+                    print("大模型返回格式无法解析:", str_reslt)
+                    return 0, "大模型返回格式错误"
+
+
+                pers_score, pers_analysis = call_llm_for_ability(dialogue_str, "说服力")
+
+
+
+                # 5. 汇总
+                score_json = {
+                    "persuasiveness": {"score": pers_score, "analysis": pers_analysis}
+                }
+
+                # 存储到practice
+                practice.score_json = score_json
+                db.commit()
+
+                return score_json
+        except Exception as e:
+            logger.error(f"开始练习失败: {str(e)}")
+            traceback.print_exc()
+            return {"persuasiveness": {"score": 0, "analysis": "分析失败"}}
+
+    async def  analyze_organization(self, practice_id: int,output_path :str, conversation_id: str, user_id: str) -> dict:
+        """
+        对练习进行分析打分，返回各项分数和分析文本
+        """
+        practice_id = 183  # todo
+        conversation_id = 'ce58b175-1b93-48dc-b748-0ed2540f69a4'  # todo
+        try:
+            with SessionLocal() as db:
+                practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+                if not practice:
+                    raise ValueError(f"Practice record not found: {practice_id}")
+
+                # 1. 获取聊天历史
+                chat_history = practice.chat_history or []
+
+                dialogue_for_llm = [
+                    {"from": msg.get("from"), "text": msg.get("text"), "suggestion": msg.get("suggestion")}
+                    for msg in chat_history if msg.get("from") and msg.get("text")
+                ]
+                dialogue_str = "\n".join([f"{msg['from']}: {msg['text']}" + (f" ( {msg['suggestion']})" if msg.get('suggestion') else "") for msg in dialogue_for_llm])
+
+
+                # 2. 语言组织能力、说服力（大模型分析，伪代码/接口）
+                # 可以用OpenAI、Qwen等大模型API
+                def call_llm_for_ability(texts, ability_type):
+                    import re
+                    # ability_type: "organization" or "persuasiveness"
+                    # 伪代码：实际用模型API
+                    # 构建系统消息（包含角色定义和规则）
+                    prompt = (f"请对以下用户对话内容和分析的记录对{ability_type}进行1-100分打分（score）和分析（analysis），输出格式请只输出如下格式：score: 85 analysis: 你的分析内容，以下对话中user是用户，"
+                              f"他们在模拟销售场景，user是大健康行业的销售人员，给出对user回答的简要分析，括号中的“改进建议”和“示例”是对user的回答做的分析，输出结构格式为json格式的score和analysis：\n") +"\n"+texts
+
+                    system_message = {
+                        'role': 'system',
+                        'content': prompt
+                    }
+
+                    messages = [system_message]
+                    str_reslt = getds.get_response_qwen(messages)
+
+                    # 1. 尝试提取 {...} 之间的内容
+                    match = re.search(r'\{.*?\}', str_reslt, re.DOTALL)
+                    if match:
+                        json_str = match.group(0)
+                        try:
+                            result = json.loads(json_str)
+                            return result['score'], result['analysis']
+                        except Exception as e:
+                            print("JSON解析失败:", e, json_str)
+                    # 2. 尝试提取 score: xx analysis: ...
+                    match2 = re.search(r'score[:：]\s*(\d+)[,， ]*analysis[:：]?\s*(.*)', str_reslt, re.IGNORECASE|re.DOTALL)
+                    if match2:
+                        score = int(match2.group(1))
+                        analysis = match2.group(2).strip()
+                        return score, analysis
+                    # 3. 兜底
+                    print("大模型返回格式无法解析:", str_reslt)
+                    return 0, "大模型返回格式错误"
+
+
+                org_score, org_analysis = call_llm_for_ability(dialogue_str, "语言组织能力")
+
+
+
+                # 5. 汇总
+                score_json = {
+                    "organization": {"score": org_score, "analysis": org_analysis}
+                }
+
+                # 存储到practice
+                practice.score_json = score_json
+                db.commit()
+
+                return score_json
+        except Exception as e:
+            logger.error(f"开始练习失败: {str(e)}")
+            traceback.print_exc()
+            return {"organization": {"score": 0, "analysis": "分析失败"}}
+
+    async def analyze_fluency_expression_pronunciation(self, practice_id: int, output_path: str, conversation_id: str, user_id: str) -> dict:
+        """
+        对练习进行分析打分，返回各项分数和分析文本
+        """
+
+        try:
+            practice_id = 183  # todo
+            conversation_id = 'ce58b175-1b93-48dc-b748-0ed2540f69a4'  # todo
+
+            audio_path = os.path.join(settings.file_path_voice, user_id, conversation_id)
+            # os.makedirs(audio_path, exist_ok=True)
             file_name = f'{conversation_id}_combine.mp3'
-            output_path = os.path.join(audio_path,file_name)
-            file_path =combined_audio.combine_audios_in_folder(audio_path,output_path)
+            output_path = os.path.join(audio_path, file_name)
+            #output_path= os.path.join(audio_path, 'audio_1753249193914_5fwv1k.mp3')
+            with SessionLocal() as db:
+                practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+                if not practice:
+                    raise ValueError(f"Practice record not found: {practice_id}")
 
-            # 1. 获取聊天历史
-            chat_history = practice.chat_history or []
-            user_texts = [msg['text'] for msg in chat_history if msg.get('from') == 'user']
-            user_voice_urls = [msg['voiceUrl'] for msg in chat_history if
-                               msg.get('from') == 'user' and msg.get('voiceUrl')]
+                # 1. 获取聊天历史
+                chat_history = practice.chat_history or []
 
-            # 2. 语言组织能力、说服力（大模型分析，伪代码/接口）
-            # 可以用OpenAI、Qwen等大模型API
-            def call_llm_for_ability(texts, ability_type):
-                # ability_type: "organization" or "persuasiveness"
-                # 伪代码：实际用模型API
-                prompt = f"请对以下用户对话内容的{ability_type}进行1-100分打分，并给出简要分析：\n" + "\n".join(texts)
-                # result = call_your_llm_api(prompt)
-                # return result['score'], result['analysis']
-                return np.random.randint(70, 95), f"{ability_type}分析文本（伪）"
+                user_texts = [msg['text'] for msg in chat_history if msg.get('from') == 'user']
+                user_voice_urls = [msg['voiceUrl'] for msg in chat_history if
+                                   msg.get('from') == 'user' and msg.get('voiceUrl')]
+                user_texts_str = ','.join(user_texts)
 
-            org_score, org_analysis = call_llm_for_ability(user_texts, "语言组织能力")
-            pers_score, pers_analysis = call_llm_for_ability(user_texts, "说服力")
+                import copy
+                req_data = copy.deepcopy(request_data)
+                # 假设音频路径字段为 payload->data->audio
 
-            # 3. 流利度（可直接实现：如平均语速、停顿等，简单实现如下）
-            def calc_fluency(texts):
-                # 简单实现：平均句长/字数，越高越流利
-                if not texts:
-                    return 60, "无有效语音"
-                avg_len = np.mean([len(t) for t in texts])
-                score = min(100, max(60, int(avg_len * 2)))
-                analysis = f"平均句长{avg_len:.1f}字，流利度得分{score}"
-                return score, analysis
+                req_data["parameter"]["st"]["refText"] = user_texts_str
+                req_data["payload"]["data"]["audio"] = output_path
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    run_xfyun_asr,
+                    req_data, APPId, APIKey, APISecret, request_url
+                )
+                json_result = json.loads(result)['result']
+                dialogue_for_llm = [
+                    {"from": msg.get("from"), "text": msg.get("text"), "suggestion": msg.get("suggestion")}
+                    for msg in chat_history if msg.get("from") and msg.get("text")
+                ]
+                dialogue_str = "\n".join([f"{msg['from']}: {msg['text']}" + (f" (建议: {msg['suggestion']})" if msg.get('suggestion') else "") for msg in dialogue_for_llm])
 
-            fluency_score, fluency_analysis = calc_fluency(user_texts)
 
-            # 4. 发音准确度、语音表达（伪代码/接口）
-            def calc_pronunciation(voice_urls):
-                # 伪代码：调用第三方语音评测API
-                # result = call_speech_eval_api(voice_urls)
-                # return result['score'], result['analysis']
-                return 85, "发音准确度分析文本（伪）1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
 
-            def calc_expression(voice_urls):
-                # 伪代码：调用第三方语音表达API
-                return 88, "语音表达分析文本（伪）111111111111111111111111111111111111111111111111111111111111111"
+                # 3. 流利度（可直接实现：如平均语速、停顿等，简单实现如下）
+                def calc_fluency(json_result):
+                    speed = int(json_result['speed'])
+                    # 简单实现：平均句长/字数，越高越流利
+                    if not speed:
+                        return 60, "无有效语音"
 
-            pronunciation_score, pronunciation_analysis = calc_pronunciation(user_voice_urls)
-            expression_score, expression_analysis = calc_expression(user_voice_urls)
+                    # score = min(100, max(60, int(avg_len * 2)))
+                    score = json_result['fluency']
+                    analysis = f"流利度得分{score},{evaluate_speed(speed)}"
 
-            # 5. 汇总
-            score_json = {
-                "organization": {"score": org_score, "analysis": org_analysis},
-                "persuasiveness": {"score": pers_score, "analysis": pers_analysis},
-                "fluency": {"score": fluency_score, "analysis": fluency_analysis},
-                "pronunciation": {"score": pronunciation_score, "analysis": pronunciation_analysis},
-                "expression": {"score": expression_score, "analysis": expression_analysis},
+                    return score, analysis
+
+                def evaluate_speed(avg_speed):
+                    if avg_speed < 120:
+                        return f"语速为{avg_speed:.1f}字/分钟，语速偏慢，建议适当加快。"
+                    elif avg_speed < 160:
+                        return f"语速为{avg_speed:.1f}字/分钟，稍慢，适合初学者或强调。"
+                    elif avg_speed < 220:
+                        return f"语速为{avg_speed:.1f}字/分钟，正常、自然、易于理解。"
+                    elif avg_speed < 260:
+                        return f"语速为{avg_speed:.1f}字/分钟，稍快，注意听众理解。"
+                    else:
+                        return f"语速为{avg_speed:.1f}字/分钟，语速偏快，建议放慢。"
+
+                def evaluate_rhythm(rhythm_score):
+                    """
+                    根据韵律度得分给出评价建议
+                    :param rhythm_score: int, 0-100
+                    :return: str
+                    """
+                    if rhythm_score < 60:
+                        return f"韵律度得分为{rhythm_score}，语音表达较为平淡，缺乏情感起伏，建议加强语调变化，提升表达感染力。"
+                    elif rhythm_score < 75:
+                        return f"韵律度得分为{rhythm_score}，语音表达基本自然，但情感色彩略显不足，可适当增加语调变化，使表达更生动。"
+                    elif rhythm_score < 90:
+                        return f"韵律度得分为{rhythm_score}，语音表达较为自然，情感传递较好，建议继续保持并适当丰富语音表现力。"
+                    else:
+                        return f"韵律度得分为{rhythm_score}，语音表达非常自然，情感丰富，富有感染力，表现优秀！"
+
+                # 4. 发音准确度、语音表达（伪代码/接口）
+
+                def calc_pronunciation(voice_urls):
+
+                    pronunciation_score = json_result['pronunciation']
+                    pronunciation_analysis = evaluate_pronunciation(pronunciation_score)
+                    # result = call_speech_eval_api(voice_urls)
+                    # return result['score'], result['analysis']
+
+                    return pronunciation_score, pronunciation_analysis
+
+                def calc_expression(json_result):
+                    expression_score = json_result['rhythm']
+                    expression_analysis = evaluate_rhythm(expression_score)
+                    return expression_score, expression_analysis
+
+                fluency_score, fluency_analysis = calc_fluency(json_result)
+
+                pronunciation_score, pronunciation_analysis = calc_pronunciation(json_result)
+                expression_score, expression_analysis = calc_expression(json_result)
+
+                # 5. 汇总
+                score_json = {
+                    "fluency": {"score": fluency_score, "analysis": fluency_analysis},
+                    "pronunciation": {"score": pronunciation_score, "analysis": pronunciation_analysis},
+                    "expression": {"score": expression_score, "analysis": expression_analysis},
+                }
+
+                # 存储到practice
+                practice.score_json = score_json
+                db.commit()
+
+                return score_json
+        except Exception as e:
+            logger.error(f"开始练习失败: {str(e)}")
+            traceback.print_exc()
+            return {
+                "fluency": {"score": 0, "analysis": "分析失败"},
+                "pronunciation": {"score": 0, "analysis": "分析失败"},
+                "expression": {"score": 0, "analysis": "分析失败"}
             }
-
-            # 存储到practice
-            practice.score_json = score_json
-            db.commit()
-
-            return score_json
 
     async def start_practice(self, user_id: int, scenario_id: int) -> Dict[str, Any]:
         """开始新的练习"""
@@ -461,11 +693,16 @@ class ConversationService:
             voice_url = f"{paths['voice_url']}/{file_name}"
             local_url = file_location
 
-            # 极速版
+            # 极速版 todo
             new_name = convert_mp3_16k(local_url)
-            new_local_url = file_name.replace('.mp3', '_16k.mp3')
-            new_url = os.path.join(paths["voice_path"], new_name)
-            str_result = st(new_url, settings.XUNFEI_APP_ID, settings.XUNFEI_API_KEY, settings.XUNFEI_API_SECRET)
+            os.remove(local_url)
+            os.rename(local_url.replace( '.mp3','_16k.mp3'),file_location)
+            #new_local_url = file_location.replace('.mp3', '_16k.mp3')
+           # new_url = os.path.join(paths["voice_path"], new_name)
+
+
+
+            str_result = st(local_url, settings.XUNFEI_APP_ID, settings.XUNFEI_API_KEY, settings.XUNFEI_API_SECRET)
             str_result = extract_words_from_lattice2(str_result)
 
             return {"text": str_result, "voiceUrl": voice_url}
@@ -474,6 +711,21 @@ class ConversationService:
             logger.error(traceback.format_exc())
             traceback.print_exc()
             raise Exception(f"上传文件处理失败: {str(e)}")
+
+def evaluate_pronunciation(pronunciation_score):
+    """
+    根据发音准确度得分给出评价建议
+    :param pronunciation_score: int, 0-100
+    :return: str
+    """
+    if pronunciation_score < 60:
+        return f"发音准确度得分为{pronunciation_score}，发音存在较多错误，建议加强音标和单词发音的练习，注意模仿标准发音。"
+    elif pronunciation_score < 75:
+        return f"发音准确度得分为{pronunciation_score}，发音基本准确，但仍有部分单词或音节发音不清晰，建议有针对性地纠正易错音。"
+    elif pronunciation_score < 90:
+        return f"发音准确度得分为{pronunciation_score}，发音较为标准，偶有小瑕疵，建议继续保持并进一步提升发音细节。"
+    else:
+        return f"发音准确度得分为{pronunciation_score}，发音非常标准清晰，几乎无可挑剔，表现优秀！"
 
 # 新增依赖注入工厂
 def get_conversation_service():

@@ -67,21 +67,68 @@ async def analyze_message(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/analyze-practice")
-async def analyze_practice(
+@router.post("/analyze-organization")
+async def analyze_organization(
     request: dict = Body(...),
     token: dict = Depends(get_current_user),
     conversation_service=Depends(get_conversation_service)
 ):
-    """
-    对练习进行分析打分，返回各项分数和分析文本
-    """
     try:
+        output_path = request.get("output_path")
         practice_id = request.get("practice_id")
         conversation_id = request.get("conversationId")
         user_id = str(token["sub"])
-        result = conversation_service.analyze_practice(practice_id,conversation_id,user_id)
-        return {"success": True, "data": result}
+        result = await conversation_service.analyze_organization(practice_id,output_path, conversation_id, user_id)
+        return {"success": True, "data": result["organization"]}
     except Exception as e:
-        logger.error(f"分析练习失败: {str(e)}")
+        logger.error(f"分析组织能力失败: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/analyze-persuasiveness")
+async def analyze_persuasiveness(
+    request: dict = Body(...),
+    token: dict = Depends(get_current_user),
+    conversation_service=Depends(get_conversation_service)
+):
+    try:
+        output_path = request.get("output_path")
+        practice_id = request.get("practice_id")
+        conversation_id = request.get("conversationId")
+        user_id = str(token["sub"])
+        result = await conversation_service.analyze_persuasiveness(practice_id,output_path, conversation_id, user_id)
+        return {"success": True, "data": result["persuasiveness"]}
+    except Exception as e:
+        logger.error(f"分析说服力失败: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/analyze-fluency-expression-pronunciation")
+async def analyze_fluency_expression_pronunciation(
+    request: dict = Body(...),
+    token: dict = Depends(get_current_user),
+    conversation_service=Depends(get_conversation_service)
+):
+    try:
+        output_path = request.get("output_path")
+        practice_id = request.get("practice_id")
+        conversation_id = request.get("conversationId")
+        user_id = str(token["sub"])
+        result = await conversation_service.analyze_fluency_expression_pronunciation(practice_id, output_path,conversation_id, user_id)
+        return {"success": True, "data": {"fluency": result["fluency"], "expression": result["expression"],"pronunciation": result["pronunciation"]}}
+    except Exception as e:
+        logger.error(f"分析流利度/表达失败: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/combine-audio")
+async def combine_audio(
+    request: dict = Body(...),
+    token: dict = Depends(get_current_user),
+    conversation_service=Depends(get_conversation_service)
+):
+    practice_id = request.get("practice_id")
+    conversation_id = request.get("conversationId")
+    user_id = str(token["sub"])
+    file_path = await conversation_service.combine_video(practice_id, conversation_id, user_id)
+    return {"success": True, "file_path": file_path}

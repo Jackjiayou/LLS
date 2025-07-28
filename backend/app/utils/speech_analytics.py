@@ -1,5 +1,5 @@
 import websocket
-import datetime
+from datetime import datetime
 import hashlib
 import base64
 import hmac
@@ -206,13 +206,16 @@ if __name__ == '__main__':
     APPID = "5e11538f"
     API_SECRET = "ff446b96b01252f80331ae6e4c64984a"
     API_KEY = "91205afe0d17e38c61be35fca346503c"
+    user_texts_str = '公司有核苷酸还有纳豆，各种维生素产品'
+    conversation_id = '445c6f33-8ea3-4691-84af-f6607f2ce2ce'
+    output_path = rf'E:\work\code\test_uniapp\LLS_0611\LLS\backend\uploads\voice\3\{conversation_id}\audio_1753170919506_zg5vic.mp3'
 
     # 创建评测器实例
     evaluator = SpeechEvaluator(APPID, API_SECRET, API_KEY)
 
     # 测试用例
-    test_text = "我们的商品是核苷酸，公司的名字叫双迪，他和珍奥是一家集团，好了"
-    test_audio = r"E:\work\code\test_uniapp\test_0424\backend\uploads\voice\卡曼公司是双迪.wav"
+    test_text = user_texts_str
+    test_audio = output_path
 
     # 执行评测
     start_time = datetime.now()
