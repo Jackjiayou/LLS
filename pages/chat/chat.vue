@@ -197,6 +197,66 @@
 				this.getRobotMessage();
 			}
 		},
+		onBackPress() {
+			// 返回时检查是否有用户消息
+			console.log('用户点击返回');
+			
+			// 检查是否有用户消息
+			const userMessages = this.messages.filter(msg => msg.from === 'user' && !msg.isLoading);
+			if (userMessages.length === 0) {
+				console.log('没有用户消息，直接返回，不保存');
+				return false; // 允许返回
+			}
+			
+			// 有用户消息时，显示确认对话框
+			uni.showModal({
+				title: '确认离开',
+				content: '当前有练习记录，离开将自动保存。确定要离开吗？',
+				confirmText: '离开',
+				cancelText: '继续练习',
+				success: (res) => {
+					if (res.confirm) {
+						// 用户确认离开，保存聊天记录并返回
+						console.log('用户确认离开，保存聊天记录');
+						uni.showLoading({
+							title: '保存中...',
+							mask: true
+						});
+						
+						// 延迟一下让用户看到保存提示
+						setTimeout(() => {
+							this.saveChatHistory();
+							uni.hideLoading();
+						}, 500);
+					} else {
+						// 用户取消，继续练习
+						console.log('用户取消离开，继续练习');
+					}
+				}
+			});
+			
+			// 阻止默认返回行为，由用户选择
+			return true;
+		},
+		onUnload() {
+			// 页面卸载时检查是否需要保存聊天记录
+			console.log('页面卸载');
+			
+			// 检查是否有用户消息
+			const userMessages = this.messages.filter(msg => msg.from === 'user' && !msg.isLoading);
+			if (userMessages.length > 0) {
+				console.log('有用户消息，保存聊天记录');
+				this.saveChatHistory();
+			} else {
+				console.log('没有用户消息，不保存聊天记录');
+			}
+			
+			// 释放音频资源
+			if (this.audioContext) {
+				this.audioContext.destroy();
+				this.audioContext = null;
+			}
+		},
 		methods: {
             // 开始新练习
             // 开始新练习
@@ -206,14 +266,15 @@
                     const sceneId = parseInt(this.sceneId);
                     const userId = parseInt(this.userId);
                     
-                    console.log('开始练习参数:', { sceneId, userId });
+                    console.log('开始练习参数:', { sceneId, userId, conversationId: this.conversationId });
                     
                     const response = await request({
                         url: '/conversation/practice/start',
                         method: 'POST',
                         data: {
                             sceneId: sceneId,
-                            userId: userId
+                            userId: userId,
+                            conversationId: this.conversationId // 添加 conversationId
                         },
                         header: {
                             'Content-Type': 'application/json'
@@ -305,6 +366,13 @@
                     // 过滤掉加载中的消息
                     const realMessages = this.messages.filter(msg => !msg.isLoading);
                     
+                    // 检查是否有用户消息
+                    const userMessages = realMessages.filter(msg => msg.from === 'user');
+                    if (userMessages.length === 0) {
+                        console.log('没有用户消息，跳过保存聊天记录');
+                        return;
+                    }
+                    
                     // 格式化消息为指定格式
                     const formattedMessages = realMessages.map(msg => ({
                         from: msg.from,
@@ -322,17 +390,29 @@
                         method: 'POST',
                         data: {
                             practice_id: this.practiceId,
-                            chat_history: formattedMessages
+                            chat_history: formattedMessages,
+                            conversation_id: this.conversationId // 添加 conversation_id
                         },
                         header: {
                             'Content-Type': 'application/json'
                         }
                     });
-        
+
                     if (response.data && response.data.success) {
                         console.log('聊天记录保存成功');
+                        // 显示保存成功提示
+                        uni.showToast({
+                            title: '聊天记录已保存',
+                            icon: 'success',
+                            duration: 1500
+                        });
                     } else {
                         console.error('聊天记录保存失败:', response.data);
+                        uni.showToast({
+                            title: '保存失败',
+                            icon: 'none',
+                            duration: 1500
+                        });
                     }
                 } catch (error) {
                     console.error('保存聊天记录时发生错误:', error);
@@ -1010,6 +1090,14 @@
 			endOnly() {
                 console.log('调用saveChatHistory')
                 this.saveChatHistory()
+				
+				// 检查是否有用户消息
+				const userMessages = this.messages.filter(msg => msg.from === 'user' && !msg.isLoading);
+				if (userMessages.length === 0) {
+					// 没有用户消息时，直接结束对话，不保存
+					console.log('没有用户消息，直接结束对话');
+				}
+				
 				// 结束对话，返回首页
 				uni.navigateBack({
 					delta: 2 // 返回上上页
@@ -1017,12 +1105,23 @@
 			},
 			endAndViewReport() {  
                 this.saveChatHistory()
+				
+				// 检查是否有用户消息
+				const userMessages = this.messages.filter(msg => msg.from === 'user' && !msg.isLoading);
+				if (userMessages.length === 0) {
+					uni.showModal({
+						title: '提示',
+						content: '暂无用户对话记录，无法生成分析报告。请先进行对话练习。',
+						showCancel: false,
+						confirmText: '确定'
+					});
+					return;
+				}
+				
 				// 发送所有对话记录到后端生成报告
                 uni.showLoading({ title: '生成报告中... ' }); 
-                // uni.navigateTo({ 
-                //      url: `/pages/testechart/testechart`
-                //  });
-                uni.navigateTo({
+                // 使用 redirectTo 跳转，这样既能避免返回栈问题，又能保持正常的返回箭头
+                uni.redirectTo({
                      url:  `/pages/report/report?practiceId=${this.practiceId}&conversationId=${this.conversationId}&fromChat=true`
                  });
                        

@@ -88,6 +88,11 @@
 			
 			<!-- 聊天消息区域 -->
 			<scroll-view class="chat-messages" :scroll-y="true" :scroll-into-view="'msg-' + chatMessages.length" :scroll-with-animation="true" ref="chatScroll">
+				<!-- 加载状态 -->
+				<view v-if="chatMessages.length === 0" class="loading-state">
+					<text class="loading-text">加载对话记录中...</text>
+				</view>
+				
 				<view v-for="(msg, index) in chatMessages" :key="index" :id="'msg-' + (index + 1)" class="message-item" :class="{ 'robot': msg.from === 'robot', 'user': msg.from === 'user' }">
 					<view class="message-avatar">
 						<image :src="msg.from === 'customer' || msg.from === 'robot' ? `${apiBaseUrl}/uploads/static/robot-avatar.png` : `${apiBaseUrl}/uploads/static/user-avatar.png`"></image>
@@ -95,7 +100,7 @@
 					<view class="message-content">  
 						<!-- 语音消息部分 -->
 						<view class="voice-message-container" v-if="msg.voiceUrl">
-							<view class="voice-message" :style="{ width: calculateVoiceWidth(msg.duration || 3) }" @click="playVoice(msg.voiceUrl, index)">
+							<view class="voice-message" :class="{ 'playing': msg.isPlaying }" :style="{ width: calculateVoiceWidth(msg.duration || 3) }" @click="playVoice(msg.voiceUrl, index)">
 								<view class="voice-icon" :class="{ 'playing': msg.isPlaying }">
 									<span></span>
 								</view>
@@ -174,9 +179,15 @@
         onLoad(options) {
 			const { practiceId, conversationId, sceneId, fromChat } = options;
 			this.practiceId = practiceId;
-			this.conversationId = conversationId;
+			this.conversationId = conversationId || 'default-conversation-id'; // 添加默认值
 			this.sceneId = parseInt(sceneId) || 0;
 			this.fromChat = fromChat === 'true'; // 是否来自聊天页面
+			
+			// 添加调试信息
+			console.log('report.vue onLoad options:', options);
+			console.log('conversationId:', this.conversationId);
+			console.log('practiceId:', this.practiceId);
+			console.log('fromChat:', this.fromChat);
 			
 			// 获取场景名称
 			this.getSceneName();
@@ -189,6 +200,25 @@
 				// 来自练习历史，尝试从数据库获取已有报告
 				this.loadExistingReport(practiceId);
 			}
+		},
+		onShow() {
+			console.log('页面显示，fromChat:', this.fromChat);
+		},
+		onHide() {
+			console.log('页面隐藏，fromChat:', this.fromChat);
+		},
+		onBackPress() {
+			if (this.fromChat) {
+				// 从聊天页面进入，点击返回箭头直接跳转到首页
+				uni.reLaunch({
+					url: '/pages/index/index'
+				});
+				return true; // 阻止默认返回行为
+			}
+			return false; // 使用默认返回行为
+		},
+		onUnload() {
+			console.log('页面卸载，fromChat:', this.fromChat);
 		},
 		onReady() {
 			// 初始化echarts雷达图 - 只在数据加载完成后调用
@@ -438,7 +468,9 @@
 								this.fetchPersuasiveness('/api/report/analyze-persuasiveness', { practice_id: practiceId, conversationId: this.conversationId, output_path: filePath }, header),
 								this.fetchFluencyExpressionPronunciation('/api/report/analyze-fluency-expression-pronunciation', { practice_id: practiceId, conversationId: this.conversationId, output_path: filePath }, header)
 							]).then(([org, pers, fluExpPron]) => {
-								// 组装数据
+								console.log('API返回数据:', { org, pers, fluExpPron });
+								
+								// 组装数据 - 修复数据结构处理
 								const overall = Math.round(
 									(org.score + pers.score + fluExpPron.fluency.score + fluExpPron.pronunciation.score + fluExpPron.expression.score) / 5
 								);
@@ -772,7 +804,7 @@
 		border-radius: 12rpx;
 		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 	}
-
+	
 	.nav-tabs {
 		display: flex;
 		justify-content: space-around;
@@ -1034,24 +1066,39 @@
 		padding-bottom: 20rpx; /* 留出底部空间 */
 	}
 
+	.loading-state {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 500rpx; /* 与chat-messages高度一致 */
+		background-color: rgba(255, 255, 255, 0.8);
+		border-radius: 12rpx;
+	}
+
+	.loading-text {
+		font-size: 36rpx;
+		color: #10b981;
+		font-weight: bold;
+	}
+
 	.message-item {
 		display: flex;
 		align-items: flex-start;
-		margin-bottom: 20rpx;
-		padding: 10rpx 0;
+		margin-bottom: 30rpx;
+		padding: 15rpx 0;
 	}
 
 	.message-item.user {
 		flex-direction: row-reverse;
 	}
 
-	.message-item.user .message-avatar {
-		margin-right: 0;
-		margin-left: 15rpx;
+	.message-item.robot {
+		flex-direction: row;
 	}
 
-	.message-item.user .message-content {
-		align-items: flex-end;
+	.message-item.user .message-avatar {
+		margin-right: 0;
+		margin-left: 20rpx;
 	}
 
 	.message-avatar {
@@ -1059,8 +1106,9 @@
 		height: 80rpx;
 		border-radius: 40rpx;
 		overflow: hidden;
-		margin-right: 15rpx;
+		margin-right: 20rpx;
 		flex-shrink: 0;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 	}
 
 	.message-avatar image {
@@ -1070,33 +1118,44 @@
 	}
 
 	.message-content {
-		flex: 1;
+		max-width: 70%;
 		display: flex;
 		flex-direction: column;
-		justify-content: center;
-		max-width: 70%;
 	}
 
 	.voice-message-container {
-		display: flex;
-		align-items: center;
-		margin-bottom: 10rpx;
+		margin-bottom: 15rpx;
+	}
+
+	.robot .voice-message-container {
+		align-self: flex-start;
+	}
+
+	.user .voice-message-container {
+		align-self: flex-end;
 	}
 
 	.voice-message {
-		height: 60rpx;
-		background-color: #f0f0f0;
-		border-radius: 30rpx;
 		display: flex;
 		align-items: center;
-		padding: 0 15rpx;
-		box-sizing: border-box;
+		padding: 15rpx 20rpx;
+		border-radius: 8rpx;
+		background-color: #fff;
+		width: fit-content;
+		min-width: 120rpx;
+		transition: width 0.3s ease;
+		position: relative;
 		cursor: pointer;
-		transition: background-color 0.2s;
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
 	}
 
 	.voice-message:hover {
 		background-color: #e0e0e0;
+	}
+
+	.voice-message.playing {
+		background-color: #e8f5e8;
+		border: 2rpx solid #10b981;
 	}
 
 	.voice-icon {
@@ -1148,6 +1207,34 @@
 		}
 	}
 
+	.robot .voice-icon {
+		filter: brightness(0) saturate(100%) invert(40%) sepia(82%) saturate(1644%) hue-rotate(199deg) brightness(97%) contrast(101%);
+	}
+
+	.robot .voice-icon.playing {
+		animation: voice-wave 1.5s ease-in-out infinite;
+		transform-origin: center;
+	}
+
+	.user .voice-message {
+		flex-direction: row-reverse;
+		background-color: #95EC69;
+	}
+
+	.user .voice-icon {
+		margin-right: 0;
+		margin-left: 10rpx;
+	}
+
+	.user .voice-duration {
+		margin-right: 10rpx;
+		color: #666;
+	}
+
+	.robot .voice-duration {
+		color: #666;
+	}
+
 	.voice-duration {
 		font-size: 24rpx;
 		color: #666;
@@ -1155,43 +1242,81 @@
 	}
 
 	.text-content-container {
-		display: flex;
-		flex-direction: column;
+		background-color: #fff;
+		border-radius: 12rpx;
+		padding: 15rpx;
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+	}
+
+	.robot .text-content-container {
+		background-color: #fff;
+		color: #333;
 	}
 
 	.text-transcript {
 		font-size: 28rpx;
+		line-height: 1.4;
+	}
+
+	.robot .text-transcript {
 		color: #333;
-		line-height: 1.6;
-		padding: 10rpx 0;
-		word-wrap: break-word;
 	}
 
 	.suggestion-wrapper {
-		margin-top: 10rpx;
-		padding-top: 10rpx;
-		border-top: 1rpx dashed #eee;
+		margin-top: 15rpx;
+		border-top: 1rpx dashed #ddd;
+		padding-top: 15rpx;
+	}
+
+	.robot .suggestion-wrapper {
+		border-top: 1rpx dashed rgba(255, 255, 255, 0.3);
 	}
 
 	.suggestion-btn {
-		font-size: 26rpx;
-		color: #10b981;
-		text-align: right;
-		margin-bottom: 10rpx;
-		cursor: pointer;
+		display: inline-block;
+		font-size: 24rpx;
+		color: #007AFF;
+		background-color: rgba(0, 122, 255, 0.1);
+		padding: 6rpx 15rpx;
+		border-radius: 20rpx;
+	}
+
+	.robot .suggestion-btn {
+		color: #fff;
+		background-color: rgba(255, 255, 255, 0.2);
+	}
+
+	.suggestion-content {
+		margin-top: 10rpx;
+		padding: 15rpx;
+		background-color: #f9f9f9;
+		border-radius: 8rpx;
+		border-left: 6rpx solid #007AFF;
+	}
+
+	.robot .suggestion-content {
+		background-color: rgba(255, 255, 255, 0.1);
+		border-left: 6rpx solid #fff;
 	}
 
 	.suggestion-title {
-		font-size: 28rpx;
+		font-size: 24rpx;
+		color: #007AFF;
 		font-weight: bold;
-		color: #333;
-		margin-bottom: 5rpx;
+		margin-bottom: 6rpx;
+	}
+
+	.robot .suggestion-title {
+		color: #fff;
 	}
 
 	.suggestion-text {
 		font-size: 26rpx;
 		color: #666;
-		line-height: 1.5;
+	}
+
+	.robot .suggestion-text {
+		color: rgba(255, 255, 255, 0.9);
 	}
 	
 	.action-buttons {

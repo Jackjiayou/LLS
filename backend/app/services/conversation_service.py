@@ -52,14 +52,18 @@ class ConversationService:
 
     async def combine_video(self, practice_id: int, conversation_id: str, user_id: str):
         try:
-            practice_id = 183  # todo
-            conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
-
-            audio_path = os.path.join(settings.file_path_voice, user_id, conversation_id)
-            os.makedirs(audio_path, exist_ok=True)
-            file_name = f'{conversation_id}_combine.mp3'
-            output_path = os.path.join(audio_path, file_name)
-            file_path = combined_audio.combine_audios_in_folder(audio_path, output_path)
+            # 添加调试信息
+            logger.info(f"combine_video 接收到的参数: practice_id={practice_id}, conversation_id={conversation_id}, user_id={user_id}")
+            with SessionLocal() as db:
+                practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+                # practice_id = 183  # todo
+                # conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
+                conversation_id = practice.conversation_id
+                audio_path = os.path.join(settings.file_path_voice, str(user_id), conversation_id)
+                os.makedirs(audio_path, exist_ok=True)
+                file_name = f'{conversation_id}_combine.mp3'
+                output_path = os.path.join(audio_path, file_name)
+                file_path = combined_audio.combine_audios_in_folder(audio_path, output_path)
 
             return file_path
         except Exception as e:
@@ -72,8 +76,11 @@ class ConversationService:
         """
         对练习进行分析打分，返回各项分数和分析文本
         """
-        practice_id = 183  # todo
-        conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
+        # 添加调试信息
+        logger.info(f"analyze_persuasiveness 接收到的参数: practice_id={practice_id}, conversation_id={conversation_id}, user_id={user_id}, output_path={output_path}")
+        
+        # practice_id = 183  # todo
+        # conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
         try:
             with SessionLocal() as db:
                 practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
@@ -168,18 +175,17 @@ class ConversationService:
 
                 pers_score, pers_analysis = call_llm_for_ability(dialogue_str, "说服力")
 
-
-
-                # 5. 汇总
-                score_json = {
-                    "persuasiveness": {"score": pers_score, "analysis": pers_analysis}
-                }
+                # 5. 获取现有的score_json，如果不存在则创建新的
+                existing_score_json = practice.score_json or {}
+                
+                # 更新persuasiveness部分
+                existing_score_json["persuasiveness"] = {"score": pers_score, "analysis": pers_analysis}
 
                 # 存储到practice
-                practice.score_json = score_json
+                practice.score_json = existing_score_json
                 db.commit()
 
-                return score_json
+                return {"persuasiveness": {"score": pers_score, "analysis": pers_analysis}}
         except Exception as e:
             logger.error(f"开始练习失败: {str(e)}")
             traceback.print_exc()
@@ -190,8 +196,11 @@ class ConversationService:
         """
         对练习进行分析打分，返回各项分数和分析文本
         """
-        practice_id = 183  # todo
-        conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
+        # 添加调试信息
+        logger.info(f"analyze_organization 接收到的参数: practice_id={practice_id}, conversation_id={conversation_id}, user_id={user_id}, output_path={output_path}")
+        
+        # practice_id = 183  # todo
+        # conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
         try:
             with SessionLocal() as db:
                 practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
@@ -284,41 +293,45 @@ class ConversationService:
                     print("大模型返回格式无法解析:", str_reslt)
                     return 0, "大模型返回格式错误"
 
-                pers_score, pers_analysis = call_llm_for_ability(dialogue_str, "语言组织能力")
+                org_score, org_analysis = call_llm_for_ability(dialogue_str, "语言组织能力")
 
-                # 5. 汇总
-                score_json = {
-                    "organization": {"score": pers_score, "analysis": pers_analysis}
-                }
+                # 5. 获取现有的score_json，如果不存在则创建新的
+                existing_score_json = practice.score_json or {}
+                
+                # 更新organization部分
+                existing_score_json["organization"] = {"score": org_score, "analysis": org_analysis}
 
                 # 存储到practice
-                practice.score_json = score_json
+                practice.score_json = existing_score_json
                 db.commit()
 
-                return score_json
+                return {"organization": {"score": org_score, "analysis": org_analysis}}
         except Exception as e:
-            logger.error(f"开始练习失败: {str(e)}")
+            logger.error(f"分析语言组织能力失败: {str(e)}")
             traceback.print_exc()
-            return {"persuasiveness": {"score": 0, "analysis": "分析失败"}}
+            return {"organization": {"score": 0, "analysis": "分析失败"}}
 
     async def analyze_fluency_expression_pronunciation(self, practice_id: int, output_path: str, conversation_id: str, user_id: str) -> dict:
         """
         对练习进行分析打分，返回各项分数和分析文本
         """
+        # 添加调试信息
+        logger.info(f"analyze_fluency_expression_pronunciation 接收到的参数: practice_id={practice_id}, conversation_id={conversation_id}, user_id={user_id}, output_path={output_path}")
 
         try:
-            practice_id = 183  # todo
-            conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
+            # practice_id = 183  # todo
+            # conversation_id = '97b38417-2bc8-4d2d-9183-f5d2e0a0108f'  # todo
 
-            audio_path = os.path.join(settings.file_path_voice, user_id, conversation_id)
-            # os.makedirs(audio_path, exist_ok=True)
-            file_name = f'{conversation_id}_combine.mp3'
-            output_path = os.path.join(audio_path, file_name)
-            #output_path= os.path.join(audio_path, 'audio_1753249193914_5fwv1k.mp3')
+
+
             with SessionLocal() as db:
                 practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
                 if not practice:
                     raise ValueError(f"Practice record not found: {practice_id}")
+                conversation_id = practice.conversation_id
+                audio_path = os.path.join(settings.file_path_voice, str(user_id), practice.conversation_id)
+                file_name = f'{conversation_id}_combine.mp3'
+                output_path = os.path.join(audio_path, file_name)
 
                 # 1. 获取聊天历史
                 chat_history = practice.chat_history or []
@@ -410,20 +423,25 @@ class ConversationService:
                 pronunciation_score, pronunciation_analysis = calc_pronunciation(json_result)
                 expression_score, expression_analysis = calc_expression(json_result)
 
-                # 5. 汇总
-                score_json = {
-                    "fluency": {"score": fluency_score, "analysis": fluency_analysis},
-                    "pronunciation": {"score": pronunciation_score, "analysis": pronunciation_analysis},
-                    "expression": {"score": expression_score, "analysis": expression_analysis},
-                }
+                # 5. 获取现有的score_json，如果不存在则创建新的
+                existing_score_json = practice.score_json or {}
+                
+                # 更新fluency、pronunciation、expression部分
+                existing_score_json["fluency"] = {"score": fluency_score, "analysis": fluency_analysis}
+                existing_score_json["pronunciation"] = {"score": pronunciation_score, "analysis": pronunciation_analysis}
+                existing_score_json["expression"] = {"score": expression_score, "analysis": expression_analysis}
 
                 # 存储到practice
-                practice.score_json = score_json
+                practice.score_json = existing_score_json
                 db.commit()
 
-                return score_json
+                return {
+                    "fluency": {"score": fluency_score, "analysis": fluency_analysis},
+                    "pronunciation": {"score": pronunciation_score, "analysis": pronunciation_analysis},
+                    "expression": {"score": expression_score, "analysis": expression_analysis}
+                }
         except Exception as e:
-            logger.error(f"开始练习失败: {str(e)}")
+            logger.error(f"分析流利度、发音、表达失败: {str(e)}")
             traceback.print_exc()
             return {
                 "fluency": {"score": 0, "analysis": "分析失败"},
@@ -431,14 +449,15 @@ class ConversationService:
                 "expression": {"score": 0, "analysis": "分析失败"}
             }
 
-    async def start_practice(self, user_id: int, scenario_id: int) -> Dict[str, Any]:
+    async def start_practice(self, user_id: int, scenario_id: int, conversation_id: str = None) -> Dict[str, Any]:
         """开始新的练习"""
         try:
             with SessionLocal() as db:
                 practice = PracticeRecord(
                     user_id=user_id,
                     scenario_id=scenario_id,
-                    status='in_progress'
+                    status='in_progress',
+                    conversation_id=conversation_id  # 保存 conversation_id
                 )
                 db.add(practice)
                 db.commit()
@@ -454,8 +473,8 @@ class ConversationService:
             traceback.print_exc()
             raise
 
-    async def save_json_message(self, practice_id: int, messages: List[Dict[str, Any]]) -> None:
-        """保存单条消息"""
+    async def save_json_message(self, practice_id: int, messages: List[Dict[str, Any]], conversation_id: str = None) -> None:
+        """保存聊天记录"""
         try:
             #chat_history  = json.dumps(message, ensure_ascii=False)
             with SessionLocal() as db:
@@ -484,11 +503,15 @@ class ConversationService:
                 practice.ended_at = datetime.utcnow()
                 practice.chat_history = message_list
                 practice.updated_at = datetime.utcnow()
+                
+                # 保存 conversation_id
+                if conversation_id:
+                    practice.conversation_id = conversation_id
 
                 # 提交更改
                 db.commit()
 
-            logger.info(f"Successfully saved chat history for practice {practice_id}")
+            logger.info(f"Successfully saved chat history for practice {practice_id} with conversation_id {conversation_id}")
         except Exception as e:
             traceback.print_exc()
             logger.error(f"保存消息失败: {str(e)}")

@@ -44,8 +44,11 @@ async def save_json_message(
         # if str(token["sub"]) != str(practice.user_id):
         #     raise HTTPException(status_code=403, detail="Unauthorized access")
 
+        # 从请求中获取 conversation_id
+        conversation_id = request.conversation_id if hasattr(request, 'conversation_id') else None
+        
         # 保存聊天记录
-        await conversation_service.save_json_message(request.practice_id, request.chat_history)
+        await conversation_service.save_json_message(request.practice_id, request.chat_history, conversation_id)
         return {"success": True, "message": "Chat history saved successfully"}
     except Exception as e:
         logger.error(f"保存聊天记录失败: {str(e)}")
@@ -63,9 +66,13 @@ async def start_practice(
         if str(token["sub"]) != str(request.userId):
             raise HTTPException(status_code=403, detail="Unauthorized access")
 
+        # 从请求中获取 conversationId
+        conversation_id = request.conversationId if hasattr(request, 'conversationId') else None
+        
         result = await conversation_service.start_practice(
             user_id=request.userId,
-            scenario_id=request.sceneId
+            scenario_id=request.sceneId,
+            conversation_id=conversation_id
         )
         return result
     except Exception as e:

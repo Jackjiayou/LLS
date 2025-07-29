@@ -29,6 +29,7 @@ class PracticeRecord(Base):
     status = Column(String(20), nullable=False, server_default='in_progress')
     score_json = Column(JSON)
     chat_history = Column(JSON, nullable=False, server_default='[]')  # 添加这行
+    is_deleted = Column(Integer, nullable=False, server_default='0')  # 逻辑删除字段：0-未删除，1-已删除
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 

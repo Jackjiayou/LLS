@@ -81,6 +81,10 @@ async def analyze_organization(
         practice_id = request.get("practice_id")
         conversation_id = request.get("conversationId")
         user_id = int(token["sub"])  # 转换为整数类型
+        
+        # 添加调试信息
+        logger.info(f"analyze-organization 接收到的参数: practice_id={practice_id}, conversation_id={conversation_id}, user_id={user_id}, output_path={output_path}")
+        
         result = await conversation_service.analyze_organization(practice_id,output_path, conversation_id, user_id)
         return {"success": True, "data": result["organization"]}
     except Exception as e:
@@ -134,6 +138,10 @@ async def combine_audio(
         practice_id = request.get("practice_id")
         conversation_id = request.get("conversationId")
         user_id = int(token["sub"])  # 转换为整数类型
+        
+        # 添加调试信息
+        logger.info(f"combine-audio 接收到的参数: practice_id={practice_id}, conversation_id={conversation_id}, user_id={user_id}")
+        
         result = await conversation_service.combine_video(practice_id, conversation_id, user_id)
         return {"success": True, "data": result}
     except Exception as e:
@@ -155,7 +163,10 @@ async def get_chat_history(
         
         # 从数据库获取对话记录
         with SessionLocal() as db:
-            practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+            practice = db.query(PracticeRecord).filter(
+                PracticeRecord.practice_id == practice_id,
+                PracticeRecord.is_deleted == 0
+            ).first()
             if not practice:
                 raise HTTPException(status_code=404, detail="Practice record not found")
             
@@ -209,9 +220,10 @@ async def get_practice_history(
             # 计算偏移量
             offset = (page - 1) * limit
             
-            # 查询练习记录 - 确保用户ID类型匹配
+            # 查询练习记录 - 确保用户ID类型匹配，并过滤已删除的记录
             practices = db.query(PracticeRecord).filter(
-                PracticeRecord.user_id == user_id
+                PracticeRecord.user_id == user_id,
+                PracticeRecord.is_deleted == 0
             ).order_by(desc(PracticeRecord.created_at)).offset(offset).limit(limit).all()
             
             # 格式化练习记录
@@ -300,7 +312,8 @@ async def get_report_data(
         with SessionLocal() as db:
             practice = db.query(PracticeRecord).filter(
                 PracticeRecord.practice_id == practice_id,
-                PracticeRecord.user_id == user_id
+                PracticeRecord.user_id == user_id,
+                PracticeRecord.is_deleted == 0
             ).first()
             
             if not practice:
@@ -336,3 +349,35 @@ async def get_report_data(
         logger.error(f"获取报告数据失败: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/practice/{practice_id}")
+async def delete_practice_record(
+    practice_id: int,
+    token: dict = Depends(get_current_user)
+):
+    """逻辑删除练习记录"""
+    try:
+        user_id = int(token["sub"])
+        
+        with SessionLocal() as db:
+            practice = db.query(PracticeRecord).filter(
+                PracticeRecord.practice_id == practice_id,
+                PracticeRecord.user_id == user_id,
+                PracticeRecord.is_deleted == 0
+            ).first()
+            
+            if not practice:
+                raise HTTPException(status_code=404, detail="练习记录不存在或已被删除")
+            
+            # 逻辑删除：将 is_deleted 设置为 1
+            practice.is_deleted = 1
+            db.commit()
+            
+            return {"success": True, "message": "练习记录已删除"}
+            
+    except ValueError as e:
+        logger.error(f"用户ID转换失败: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    except Exception as e:
+        logger.error(f"删除练习记录失败: {str(e)}")
+        traceback.print_exc()

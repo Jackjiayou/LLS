@@ -7,6 +7,7 @@ from datetime import datetime
 class StartPracticeRequest(BaseModel):
     sceneId: int
     userId: int
+    conversationId: Optional[str] = None
 
 class StartPracticeResponse(BaseModel):
     practice_id: int
@@ -64,3 +65,4 @@ class PracticeStatsResponse(BaseModel):
 class SaveJsonMessageRequest(BaseModel):
     practice_id: int
     chat_history: List[ChatMessage]
+    conversation_id: Optional[str] = None
