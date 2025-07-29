@@ -17,6 +17,9 @@ from app.utils.personification_text_to_speach import text_to_speech as tts
 from app.utils.speech_to_text_fast import speech_to_text as st
 from app.schemas.practice import ChatMessage, SaveJsonMessageRequest
 from app.core.auth import get_current_user
+from app.db.database import SessionLocal
+from app.models.practice import PracticeRecord
+from sqlalchemy import desc
 from app.schemas.practice import (
     StartPracticeRequest,
     StartPracticeResponse,
@@ -77,7 +80,7 @@ async def analyze_organization(
         output_path = request.get("output_path")
         practice_id = request.get("practice_id")
         conversation_id = request.get("conversationId")
-        user_id = str(token["sub"])
+        user_id = int(token["sub"])  # 转换为整数类型
         result = await conversation_service.analyze_organization(practice_id,output_path, conversation_id, user_id)
         return {"success": True, "data": result["organization"]}
     except Exception as e:
@@ -95,7 +98,7 @@ async def analyze_persuasiveness(
         output_path = request.get("output_path")
         practice_id = request.get("practice_id")
         conversation_id = request.get("conversationId")
-        user_id = str(token["sub"])
+        user_id = int(token["sub"])  # 转换为整数类型
         result = await conversation_service.analyze_persuasiveness(practice_id,output_path, conversation_id, user_id)
         return {"success": True, "data": result["persuasiveness"]}
     except Exception as e:
@@ -113,11 +116,11 @@ async def analyze_fluency_expression_pronunciation(
         output_path = request.get("output_path")
         practice_id = request.get("practice_id")
         conversation_id = request.get("conversationId")
-        user_id = str(token["sub"])
-        result = await conversation_service.analyze_fluency_expression_pronunciation(practice_id, output_path,conversation_id, user_id)
-        return {"success": True, "data": {"fluency": result["fluency"], "expression": result["expression"],"pronunciation": result["pronunciation"]}}
+        user_id = int(token["sub"])  # 转换为整数类型
+        result = await conversation_service.analyze_fluency_expression_pronunciation(practice_id, output_path, conversation_id, user_id)
+        return {"success": True, "data": result}
     except Exception as e:
-        logger.error(f"分析流利度/表达失败: {str(e)}")
+        logger.error(f"分析流利度、表达和发音失败: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -127,8 +130,209 @@ async def combine_audio(
     token: dict = Depends(get_current_user),
     conversation_service=Depends(get_conversation_service)
 ):
-    practice_id = request.get("practice_id")
-    conversation_id = request.get("conversationId")
-    user_id = str(token["sub"])
-    file_path = await conversation_service.combine_video(practice_id, conversation_id, user_id)
-    return {"success": True, "file_path": file_path}
+    try:
+        practice_id = request.get("practice_id")
+        conversation_id = request.get("conversationId")
+        user_id = int(token["sub"])  # 转换为整数类型
+        result = await conversation_service.combine_video(practice_id, conversation_id, user_id)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"合并音频失败: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/get-chat-history")
+async def get_chat_history(
+    request: dict = Body(...),
+    token: dict = Depends(get_current_user),
+    conversation_service=Depends(get_conversation_service)
+):
+    """获取练习的对话记录"""
+    try:
+        practice_id = request.get("practice_id")
+        user_id = int(token["sub"])  # 转换为整数类型
+        
+        # 从数据库获取对话记录
+        with SessionLocal() as db:
+            practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+            if not practice:
+                raise HTTPException(status_code=404, detail="Practice record not found")
+            
+            # 检查权限 - 确保用户ID类型匹配
+            if practice.user_id != user_id:
+                logger.error(f"权限验证失败: practice.user_id={practice.user_id}, user_id={user_id}")
+                raise HTTPException(status_code=403, detail="Unauthorized access")
+            
+            # 获取聊天历史
+            chat_history = practice.chat_history or []
+            
+            # 格式化对话记录
+            formatted_messages = []
+            for msg in chat_history:
+                if msg.get("from") and msg.get("text"):
+                    formatted_msg = {
+                        "from": msg["from"],
+                        "text": msg["text"],
+                        "timestamp": msg.get("timestamp", ""),
+                        "voiceUrl": msg.get("voiceUrl", ""),
+                        "duration": msg.get("duration", 3),
+                        "suggestion": msg.get("suggestion", "")
+                    }
+                    formatted_messages.append(formatted_msg)
+            
+            return {"success": True, "data": formatted_messages}
+            
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"用户ID转换失败: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    except Exception as e:
+        logger.error(f"获取对话记录失败: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/practice/history")
+async def get_practice_history(
+    page: int = 1,
+    limit: int = 10,
+    token: dict = Depends(get_current_user)
+):
+    """获取用户的练习历史记录"""
+    try:
+        user_id = int(token["sub"])  # 转换为整数类型
+        
+        # 从数据库获取练习记录
+        with SessionLocal() as db:
+            # 计算偏移量
+            offset = (page - 1) * limit
+            
+            # 查询练习记录 - 确保用户ID类型匹配
+            practices = db.query(PracticeRecord).filter(
+                PracticeRecord.user_id == user_id
+            ).order_by(desc(PracticeRecord.created_at)).offset(offset).limit(limit).all()
+            
+            # 格式化练习记录
+            formatted_practices = []
+            for practice in practices:
+                # 解析评分数据
+                score_json = practice.score_json or {}
+                organization_score = score_json.get("organization", {}).get("score", 0)
+                persuasiveness_score = score_json.get("persuasiveness", {}).get("score", 0)
+                fluency_score = score_json.get("fluency", {}).get("score", 0)
+                pronunciation_score = score_json.get("pronunciation", {}).get("score", 0)
+                expression_score = score_json.get("expression", {}).get("score", 0)
+                
+                # 判断是否有分析报告
+                has_report = bool(score_json and any([
+                    organization_score > 0,
+                    persuasiveness_score > 0,
+                    fluency_score > 0,
+                    pronunciation_score > 0,
+                    expression_score > 0
+                ]))
+                
+                # 计算总体评分
+                scores = [organization_score, persuasiveness_score, fluency_score, pronunciation_score, expression_score]
+                overall_score = round(sum(scores) / len(scores)) if scores and any(scores) else 0
+                
+                # 获取场景名称
+                scene_names = {
+                    0: '核苷酸介绍',
+                    1: '新客户开发',
+                    2: '异议处理',
+                    3: '产品推荐',
+                    4: '成交技巧'
+                }
+                scene_name = scene_names.get(practice.scenario_id, '未知场景')
+                
+                # 获取状态文本
+                status_texts = {
+                    'in_progress': '进行中',
+                    'completed': '已完成',
+                    'paused': '已暂停',
+                    'cancelled': '已取消'
+                }
+                status_text = status_texts.get(practice.status, '未知状态')
+                
+                formatted_practice = {
+                    "practiceId": practice.practice_id,
+                    "conversationId": practice.conversation_id or '',
+                    "sceneId": practice.scenario_id,
+                    "sceneName": scene_name,
+                    "overallScore": overall_score,
+                    "organizationScore": organization_score,
+                    "persuasivenessScore": persuasiveness_score,
+                    "fluencyScore": fluency_score,
+                    "pronunciationScore": pronunciation_score,
+                    "expressionScore": expression_score,
+                    "createdAt": practice.created_at.strftime("%Y-%m-%d %H:%M") if practice.created_at else "",
+                    "status": practice.status,
+                    "statusText": status_text,
+                    "hasReport": has_report
+                }
+                formatted_practices.append(formatted_practice)
+            
+            return {"success": True, "data": {"practices": formatted_practices}}
+            
+    except ValueError as e:
+        logger.error(f"用户ID转换失败: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    except Exception as e:
+        logger.error(f"获取练习历史失败: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/get-report/{practice_id}")
+async def get_report_data(
+    practice_id: int,
+    token: dict = Depends(get_current_user)
+):
+    """获取已有的报告数据"""
+    try:
+        user_id = int(token["sub"])
+        
+        # from app.db.database import SessionLocal
+        # from app.models.practice import PracticeRecord
+        
+        with SessionLocal() as db:
+            practice = db.query(PracticeRecord).filter(
+                PracticeRecord.practice_id == practice_id,
+                PracticeRecord.user_id == user_id
+            ).first()
+            
+            if not practice:
+                raise HTTPException(status_code=404, detail="练习记录不存在")
+            
+            # 检查是否有报告数据
+            if not practice.score_json:
+                raise HTTPException(status_code=404, detail="该练习暂无报告数据")
+            
+            score_data = practice.score_json
+            
+            # 格式化返回数据
+            report_data = {
+                "practiceId": practice.practice_id,
+                "conversationId": practice.conversation_id,
+                "scenarioId": practice.scenario_id,
+                "createdAt": practice.created_at.strftime("%Y-%m-%d %H:%M") if practice.created_at else "",
+                "scores": {
+                    "organization": score_data.get("organization", {}),
+                    "persuasiveness": score_data.get("persuasiveness", {}),
+                    "fluency": score_data.get("fluency", {}),
+                    "pronunciation": score_data.get("pronunciation", {}),
+                    "expression": score_data.get("expression", {})
+                }
+            }
+            
+            return {"success": True, "data": report_data}
+            
+    except ValueError as e:
+        logger.error(f"用户ID转换失败: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    except Exception as e:
+        logger.error(f"获取报告数据失败: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

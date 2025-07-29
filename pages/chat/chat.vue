@@ -1023,7 +1023,7 @@
                 //      url: `/pages/testechart/testechart`
                 //  });
                 uni.navigateTo({
-                     url:  `/pages/report/report?practiceId=${this.practiceId}&conversationId=${this.conversationId}`
+                     url:  `/pages/report/report?practiceId=${this.practiceId}&conversationId=${this.conversationId}&fromChat=true`
                  });
                        
 				// this.generateReport();

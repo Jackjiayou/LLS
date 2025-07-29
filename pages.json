@@ -115,6 +115,19 @@
 			"style": {
 				"navigationBarTitleText": "测试图表"
 			}
+		},
+		{
+			"path": "pages/practice-history/practice-history",
+			"style": {
+				"navigationBarTitleText": "练习历史",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/chat-history/chat-history",
+			"style": {
+				"navigationBarTitleText": "对话记录"
+			}
 		}
 	],
 	"globalStyle": {

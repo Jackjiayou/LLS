@@ -1,73 +1,129 @@
 <template>
 	<view class="container">
-		<view class="report-header">
-			<text class="report-title">练习报告</text>
-			<text class="scene-name">{{sceneName}}</text>
+		<!-- 顶部导航栏 -->
+		<view class="nav-header">
+			<view class="nav-tabs">
+				<view 
+					class="nav-tab" 
+					:class="{ active: activeTab === 'report' }"
+					@click="switchTab('report')"
+				>
+					报告
+				</view>
+				<view 
+					class="nav-tab" 
+					:class="{ active: activeTab === 'dialogue' }"
+					@click="switchTab('dialogue')"
+				>
+					对话
+				</view>
+			</view>
 		</view>
-        
-		<view class="report-content">
-			<!-- 整体评分 -->
-			<view class="score-section vertical">
-				<view class="overall-score">
-					<text class="score-value">{{report.overall}}</text>
-					<text class="score-label">总体评分</text>
-				</view>
-				<view class="radar-chart">
-					<view v-if="loading" class="loading-container">
-						<text class="loading-text">分析中...</text>
-					</view>
-					<uni-ec-canvas v-else class="radar-canvas" id="radar-canvas" ref="canvas" canvas-id="radar-canvas" :ec="ec"></uni-ec-canvas>
-				</view>
+
+		<!-- 报告内容 -->
+		<view v-if="activeTab === 'report'" class="report-content">
+			<view class="report-header">
+				<text class="report-title">练习报告</text>
+				<text class="scene-name">{{sceneName}}</text>
 			</view>
 			
-			<!-- 详细分析 -->
-			<view class="analysis-section">
-				<view class="section-title">详细分析</view>
-				<!-- 横向评分维度导航 -->
-				<scroll-view class="dimension-nav" scroll-x="true" :scroll-into-view="navScrollIntoView" show-scrollbar="false">
-					<view 
-						v-for="(item, index) in report.analysis" 
-						:key="index" 
-						class="dimension-nav-item"
-						:id="'nav-item-' + index"
-						:class="{active: activeAnalysisIndex === index}"
-						@click="scrollToAnalysis(index)"
-					>
-						{{item.title}}
+			<view class="report-body">
+				<!-- 整体评分 -->
+				<view class="score-section vertical">
+					<view class="overall-score">
+						<text class="score-value">{{report.overall}}</text>
+						<text class="score-label">总体评分</text>
 					</view>
-				</scroll-view>
-				<!-- 详细分析内容 -->
-				<view>
-					<view 
-						class="analysis-item" 
-						v-for="(item, index) in report.analysis" 
-						:key="index"
-						:id="'analysis-' + index"
-					>
-						<view class="analysis-header">
-							<view class="analysis-title">{{item.title}}</view>
-							<view class="analysis-score">{{item.score}}分</view>
+					<view class="radar-chart">
+						<view v-if="loading" class="loading-container">
+							<text class="loading-text">分析中...</text>
 						</view>
-						<view class="analysis-content">
-							<text>{{item.content}}</text>
-						</view>
+						<uni-ec-canvas v-else class="radar-canvas" id="radar-canvas" ref="canvas" canvas-id="radar-canvas" :ec="ec"></uni-ec-canvas>
 					</view>
 				</view>
-			</view>
-			
-			<!-- 改进建议 -->
-<!-- 			<view class="suggestion-section">
-				<view class="section-title">改进建议</view>
 				
-				<view class="suggestion-list">
-					<view class="suggestion-item" v-for="(item, index) in report.suggestions" :key="index">
-						<view class="suggestion-icon">{{index + 1}}</view>
-						<view class="suggestion-content">
-							<text>{{item}}</text>
+				<!-- 详细分析 -->
+				<view class="analysis-section">
+					<view class="section-title">详细分析</view>
+					<!-- 横向评分维度导航 -->
+					<scroll-view class="dimension-nav" scroll-x="true" :scroll-into-view="navScrollIntoView" show-scrollbar="false">
+						<view 
+							v-for="(item, index) in report.analysis" 
+							:key="index" 
+							class="dimension-nav-item"
+							:id="'nav-item-' + index"
+							:class="{active: activeAnalysisIndex === index}"
+							@click="scrollToAnalysis(index)"
+						>
+							{{item.title}}
+						</view>
+					</scroll-view>
+					<!-- 详细分析内容 -->
+					<view>
+						<view 
+							class="analysis-item" 
+							v-for="(item, index) in report.analysis" 
+							:key="index"
+							:id="'analysis-' + index"
+						>
+							<view class="analysis-header">
+								<view class="analysis-title">{{item.title}}</view>
+								<view class="analysis-score">{{item.score}}分</view>
+							</view>
+							<view class="analysis-content">
+								<text>{{item.content}}</text>
+							</view>
 						</view>
 					</view>
 				</view>
-			</view> -->
+			</view>
+		</view>
+
+		<!-- 对话记录内容 -->
+		<view v-if="activeTab === 'dialogue'" class="dialogue-content">
+			<view class="dialogue-header">
+				<text class="dialogue-title">对话记录</text>
+				<text class="scene-name">{{sceneName}}</text>
+			</view>
+			
+			<!-- 聊天消息区域 -->
+			<scroll-view class="chat-messages" :scroll-y="true" :scroll-into-view="'msg-' + chatMessages.length" :scroll-with-animation="true" ref="chatScroll">
+				<view v-for="(msg, index) in chatMessages" :key="index" :id="'msg-' + (index + 1)" class="message-item" :class="{ 'robot': msg.from === 'robot', 'user': msg.from === 'user' }">
+					<view class="message-avatar">
+						<image :src="msg.from === 'customer' || msg.from === 'robot' ? `${apiBaseUrl}/uploads/static/robot-avatar.png` : `${apiBaseUrl}/uploads/static/user-avatar.png`"></image>
+					</view>
+					<view class="message-content">  
+						<!-- 语音消息部分 -->
+						<view class="voice-message-container" v-if="msg.voiceUrl">
+							<view class="voice-message" :style="{ width: calculateVoiceWidth(msg.duration || 3) }" @click="playVoice(msg.voiceUrl, index)">
+								<view class="voice-icon" :class="{ 'playing': msg.isPlaying }">
+									<span></span>
+								</view>
+								<view class="voice-duration">{{msg.duration || 3}}''</view>
+							</view>
+						</view>
+						
+						<!-- 文字内容部分 -->
+						<view class="text-content-container">
+							<!-- 文字转录 -->
+							<view class="text-transcript">
+								<text>{{msg.text}}</text>
+							</view>
+							
+							<!-- 改进建议（仅用户消息显示） -->
+							<view v-if="msg.from === 'user' && msg.suggestion" class="suggestion-wrapper">
+								<view class="suggestion-btn" @click="toggleSuggestion(index)">
+									<text>{{msg.showSuggestion ? '收起表达建议' : '查看表达建议'}}</text>
+								</view>
+								<view class="suggestion-content" v-if="msg.showSuggestion">
+									<view class="suggestion-title">表达建议</view>
+									<text class="suggestion-text">{{msg.suggestion}}</text>
+								</view>
+							</view>
+						</view>
+					</view>
+				</view>
+			</scroll-view>
 		</view>
 		
 		<view class="action-buttons">
@@ -91,6 +147,7 @@
 				ec: { lazyLoad: true },
 				sceneId: 0,
 				sceneName: '',
+				fromChat: false, // 是否来自聊天页面
 				apiBaseUrl: config.apiBaseUrl,
 				report: {
 					overall: 0,
@@ -106,87 +163,30 @@
 				},
 				activeAnalysisIndex: 0,
 				navScrollIntoView: '',
-				loading: false
+				loading: false,
+				activeTab: 'report', // 新增：控制当前显示的tab
+				chatMessages: [] // 新增：存储对话消息
 			}
 		},
         onLoad(options) {
-            this.loading = true;
-            uni.showLoading({ title: '音频合并中...' });
-            const conversationId = options.conversationId;
-            const practiceId = options.practiceId;
-            const token = uni.getStorageSync('token');
-            const header = {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            };
-
-            // 1. 先调用音频合并接口
-            uni.request({
-                url: this.apiBaseUrl + '/api/report/combine-audio',
-                method: 'POST',
-                data: { practice_id: practiceId, conversationId },
-                header,
-                success: (res) => {
-                    if (res.data && res.data.success) {
-                        // 合并成功，拿到 file_path
-                        const filePath = res.data.file_path;
-                        uni.hideLoading();
-                        
-                        // 2. 并发调用两个分析接口
-                        uni.showLoading({ title: '分析中...' });
-                        Promise.all([
-                            this.fetchOrganization('/api/report/analyze-organization', { practice_id: practiceId, conversationId, output_path: filePath }, header),
-                            this.fetchPersuasiveness('/api/report/analyze-persuasiveness', { practice_id: practiceId, conversationId, output_path: filePath }, header),
-                            this.fetchFluencyExpressionPronunciation('/api/report/analyze-fluency-expression-pronunciation', { practice_id: practiceId, conversationId, output_path: filePath }, header)
-                        ]).then(([org, pers, fluExpPron]) => {
-                            // 组装数据
-                            const overall = Math.round(
-                                (org.score + pers.score + fluExpPron.fluency.score + fluExpPron.pronunciation.score + fluExpPron.expression.score) / 5
-                            );
-                            const dimensions = [
-                                { name: '语言组织能力', score: org.score },
-                                { name: '说服力', score: pers.score },
-                                { name: '流利度', score: fluExpPron.fluency.score },
-                                { name: '发音准确度', score: fluExpPron.pronunciation.score },
-                                { name: '语音表达', score: fluExpPron.expression.score }
-                            ];
-                            const analysis = [
-                                { title: '语言组织能力', score: org.score, content: org.analysis },
-                                { title: '说服力', score: pers.score, content: pers.analysis },
-                                { title: '流利度', score: fluExpPron.fluency.score, content: fluExpPron.fluency.analysis },
-                                { title: '发音准确度', score: fluExpPron.pronunciation.score, content: fluExpPron.pronunciation.analysis },
-                                { title: '语音表达', score: fluExpPron.expression.score, content: fluExpPron.expression.analysis }
-                            ];
-                            const suggestions = [
-                                org.analysis, pers.analysis, fluExpPron.fluency.analysis, fluExpPron.pronunciation.analysis, fluExpPron.expression.analysis
-                            ];
-                            this.report = { overall, dimensions, analysis, suggestions };
-                            
-                            // 所有数据返回后显示雷达图
-                            this.$nextTick(() => {
-                                if (this.$refs.canvas) {
-                                    this.$refs.canvas.init(this.initChart);
-                                }
-                            });
-                        }).catch(err => {
-                            uni.showToast({ title: '获取报告失败', icon: 'none' });
-                        }).finally(() => {
-                            this.loading = false;
-                            uni.hideLoading();
-                        });
-                    } else {
-                        uni.showToast({ title: '音频合并失败', icon: 'none' });
-                        this.loading = false;
-                        uni.hideLoading();
-                    }
-                },
-                fail: () => {
-                    uni.showToast({ title: '音频合并失败', icon: 'none' });
-                    this.loading = false;
-                    uni.hideLoading();
-                }
-            });
-        },
+			const { practiceId, conversationId, sceneId, fromChat } = options;
+			this.practiceId = practiceId;
+			this.conversationId = conversationId;
+			this.sceneId = parseInt(sceneId) || 0;
+			this.fromChat = fromChat === 'true'; // 是否来自聊天页面
+			
+			// 获取场景名称
+			this.getSceneName();
+			
+			// 根据来源决定是获取已有报告还是重新生成
+			if (this.fromChat) {
+				// 来自聊天页面，重新生成报告
+				this.generateNewReport(practiceId);
+			} else {
+				// 来自练习历史，尝试从数据库获取已有报告
+				this.loadExistingReport(practiceId);
+			}
+		},
 		onReady() {
 			// 初始化echarts雷达图 - 只在数据加载完成后调用
 			// this.$refs.canvas.init(this.initChart);
@@ -324,6 +324,168 @@
 					});
 				});
 			},
+			loadExistingReport(practiceId) {
+				const token = uni.getStorageSync('token');
+				const header = {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				};
+				
+				uni.request({
+					url: this.apiBaseUrl + `/api/report/get-report/${practiceId}`,
+					method: 'GET',
+					header,
+					success: (res) => {
+						if (res.data && res.data.success) {
+							// 从数据库获取到报告数据
+							const reportData = res.data.data;
+							this.processReportData(reportData);
+							
+							// 获取对话记录
+							this.loadChatHistory(practiceId, header);
+							
+							// 显示雷达图
+							this.$nextTick(() => {
+								if (this.$refs.canvas) {
+									this.$refs.canvas.init(this.initChart);
+								}
+							});
+						} else {
+							// 没有已有报告，重新生成
+							this.generateNewReport(practiceId);
+						}
+					},
+					fail: (err) => {
+						console.error('获取已有报告失败:', err);
+						// 获取失败，重新生成
+						this.generateNewReport(practiceId);
+					}
+				});
+			},
+			
+			processReportData(reportData) {
+				const scores = reportData.scores;
+				
+				// 计算总分
+				const scoreValues = [
+					scores.organization.score || 0,
+					scores.persuasiveness.score || 0,
+					scores.fluency.score || 0,
+					scores.pronunciation.score || 0,
+					scores.expression.score || 0
+				];
+				const overall = Math.round(scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length);
+				
+				// 组装维度数据
+				const dimensions = [
+					{ name: '语言组织能力', score: scores.organization.score || 0 },
+					{ name: '说服力', score: scores.persuasiveness.score || 0 },
+					{ name: '流利度', score: scores.fluency.score || 0 },
+					{ name: '发音准确度', score: scores.pronunciation.score || 0 },
+					{ name: '语音表达', score: scores.expression.score || 0 }
+				];
+				
+				// 组装分析数据
+				const analysis = [
+					{ title: '语言组织能力', score: scores.organization.score || 0, content: scores.organization.analysis || '' },
+					{ title: '说服力', score: scores.persuasiveness.score || 0, content: scores.persuasiveness.analysis || '' },
+					{ title: '流利度', score: scores.fluency.score || 0, content: scores.fluency.analysis || '' },
+					{ title: '发音准确度', score: scores.pronunciation.score || 0, content: scores.pronunciation.analysis || '' },
+					{ title: '语音表达', score: scores.expression.score || 0, content: scores.expression.analysis || '' }
+				];
+				
+				const suggestions = [
+					scores.organization.analysis || '',
+					scores.persuasiveness.analysis || '',
+					scores.fluency.analysis || '',
+					scores.pronunciation.analysis || '',
+					scores.expression.analysis || ''
+				];
+				
+				this.report = { overall, dimensions, analysis, suggestions };
+			},
+			
+			generateNewReport(practiceId) {
+				// 原来的重新生成报告逻辑
+				this.loading = true;
+				uni.showLoading({ title: '音频合并中...' });
+				
+				const token = uni.getStorageSync('token');
+				const header = {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				};
+
+				// 1. 先调用音频合并接口
+				uni.request({
+					url: this.apiBaseUrl + '/api/report/combine-audio',
+					method: 'POST',
+					data: { practice_id: practiceId, conversationId: this.conversationId },
+					header,
+					success: (res) => {
+						if (res.data && res.data.success) {
+							// 合并成功，拿到 file_path
+							const filePath = res.data.data.file_path;
+							uni.hideLoading();
+							
+							// 2. 并发调用两个分析接口
+							uni.showLoading({ title: '分析中...' });
+							Promise.all([
+								this.fetchOrganization('/api/report/analyze-organization', { practice_id: practiceId, conversationId: this.conversationId, output_path: filePath }, header),
+								this.fetchPersuasiveness('/api/report/analyze-persuasiveness', { practice_id: practiceId, conversationId: this.conversationId, output_path: filePath }, header),
+								this.fetchFluencyExpressionPronunciation('/api/report/analyze-fluency-expression-pronunciation', { practice_id: practiceId, conversationId: this.conversationId, output_path: filePath }, header)
+							]).then(([org, pers, fluExpPron]) => {
+								// 组装数据
+								const overall = Math.round(
+									(org.score + pers.score + fluExpPron.fluency.score + fluExpPron.pronunciation.score + fluExpPron.expression.score) / 5
+								);
+								const dimensions = [
+									{ name: '语言组织能力', score: org.score },
+									{ name: '说服力', score: pers.score },
+									{ name: '流利度', score: fluExpPron.fluency.score },
+									{ name: '发音准确度', score: fluExpPron.pronunciation.score },
+									{ name: '语音表达', score: fluExpPron.expression.score }
+								];
+								const analysis = [
+									{ title: '语言组织能力', score: org.score, content: org.analysis },
+									{ title: '说服力', score: pers.score, content: pers.analysis },
+									{ title: '流利度', score: fluExpPron.fluency.score, content: fluExpPron.fluency.analysis },
+									{ title: '发音准确度', score: fluExpPron.pronunciation.score, content: fluExpPron.pronunciation.analysis },
+									{ title: '语音表达', score: fluExpPron.expression.score, content: fluExpPron.expression.analysis }
+								];
+								const suggestions = [
+									org.analysis, pers.analysis, fluExpPron.fluency.analysis, fluExpPron.pronunciation.analysis, fluExpPron.expression.analysis
+								];
+								this.report = { overall, dimensions, analysis, suggestions };
+								
+								// 获取对话记录
+								this.loadChatHistory(practiceId, header);
+								
+								// 所有数据返回后显示雷达图
+								this.$nextTick(() => {
+									if (this.$refs.canvas) {
+										this.$refs.canvas.init(this.initChart);
+									}
+								});
+							}).catch(err => {
+								uni.showToast({ title: '获取报告失败', icon: 'none' });
+							}).finally(() => {
+								this.loading = false;
+								uni.hideLoading();
+							});
+						} else {
+							uni.showToast({ title: '音频合并失败', icon: 'none' });
+							this.loading = false;
+							uni.hideLoading();
+						}
+					},
+					fail: () => {
+						uni.showToast({ title: '音频合并失败', icon: 'none' });
+						this.loading = false;
+						uni.hideLoading();
+					}
+				});
+			},
 			getReportData() {
 				// 获取场景名称
 				const sceneNames = {
@@ -406,6 +568,31 @@
 					});
 				}
 			},
+			loadChatHistory(practiceId, header) {
+				// 获取对话记录
+				uni.request({
+					url: this.apiBaseUrl + '/api/report/get-chat-history',
+					method: 'POST',
+					data: { practice_id: practiceId },
+					header,
+					success: (res) => {
+						if (res.data && res.data.success) {
+							// 处理对话记录数据
+							const chatHistory = res.data.data || [];
+							this.chatMessages = chatHistory.map(msg => ({
+								...msg,
+								showSuggestion: false, // 默认不显示建议
+								isPlaying: false // 默认不播放
+							}));
+						} else {
+							console.error('获取对话记录失败:', res);
+						}
+					},
+					fail: (err) => {
+						console.error('获取对话记录失败:', err);
+					}
+				});
+			},
 			shareReport() {
 				uni.showToast({
 					title: '分享功能开发中',
@@ -416,6 +603,141 @@
 				uni.reLaunch({
 					url: '/pages/index/index'
 				});
+			},
+			switchTab(tab) {
+				this.activeTab = tab;
+				this.activeAnalysisIndex = 0; // 切换tab时重置分析索引
+				this.navScrollIntoView = '';
+			},
+			calculateVoiceWidth(duration) {
+				// 假设语音时长越长，宽度越大
+				return `${(duration / 3) * 100}px`; // 例如，3秒时宽度为100px
+			},
+			playVoice(url, index) {
+				console.log('播放语音:', url);
+				
+				// 检查URL是否有效
+				if (!url) {
+					uni.showToast({
+						title: '无效的语音文件',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				const msg = this.chatMessages[index];
+				
+				// 如果点击的是当前正在播放的语音，则停止播放
+				if (msg.isPlaying) {
+					msg.isPlaying = false;
+					this.$set(this.chatMessages, index, msg);
+					return;
+				}
+				
+				// 停止其他正在播放的语音
+				this.chatMessages.forEach((item, idx) => {
+					if (idx !== index && item.isPlaying) {
+						item.isPlaying = false;
+						this.$set(this.chatMessages, idx, item);
+					}
+				});
+				
+				// 设置当前消息为播放状态
+				msg.isPlaying = true;
+				this.$set(this.chatMessages, index, msg);
+				
+				// 创建音频上下文
+				const audioContext = uni.createInnerAudioContext();
+				
+				// 设置音频源
+				if (url.startsWith('http')) {
+					// 如果是网络URL，先下载到本地再播放
+					console.log('下载并播放网络音频:', url);
+					
+					uni.downloadFile({
+						url: url,
+						success: (res) => {
+							console.log('音频下载成功:', res);
+							if (res.statusCode === 200) {
+								audioContext.src = res.tempFilePath;
+								this.startAudioPlayback(audioContext, msg, index);
+							} else {
+								console.error('下载失败，状态码:', res.statusCode);
+								msg.isPlaying = false;
+								this.$set(this.chatMessages, index, msg);
+							}
+						},
+						fail: (err) => {
+							console.error('下载失败:', err);
+							msg.isPlaying = false;
+							this.$set(this.chatMessages, index, msg);
+						}
+					});
+				} else {
+					// 如果是本地文件
+					audioContext.src = url;
+					this.startAudioPlayback(audioContext, msg, index);
+				}
+			},
+			
+			startAudioPlayback(audioContext, msg, index) {
+				// 监听播放开始
+				audioContext.onPlay(() => {
+					console.log('开始播放');
+				});
+				
+				// 监听播放错误
+				audioContext.onError((err) => {
+					console.error('播放错误:', err);
+					msg.isPlaying = false;
+					this.$set(this.chatMessages, index, msg);
+					
+					// 释放资源
+					try {
+						audioContext.destroy();
+					} catch (e) {
+						console.error('销毁音频上下文失败:', e);
+					}
+				});
+				
+				// 监听播放结束
+				audioContext.onEnded(() => {
+					console.log('播放结束');
+					msg.isPlaying = false;
+					this.$set(this.chatMessages, index, msg);
+					
+					// 释放资源
+					try {
+						audioContext.destroy();
+					} catch (e) {
+						console.error('销毁音频上下文失败:', e);
+					}
+				});
+				
+				// 开始播放
+				try {
+					audioContext.play();
+				} catch (e) {
+					console.error('播放音频失败:', e);
+					msg.isPlaying = false;
+					this.$set(this.chatMessages, index, msg);
+				}
+			},
+			toggleSuggestion(index) {
+				const msg = this.chatMessages[index];
+				msg.showSuggestion = !msg.showSuggestion;
+				this.$set(this.chatMessages, index, msg);
+			},
+			getSceneName() {
+				// 获取场景名称
+				const sceneNames = {
+					0: '核苷酸介绍',
+					1: '新客户开发',
+					2: '异议处理',
+					3: '产品推荐',
+					4: '成交技巧'
+				};
+				this.sceneName = sceneNames[this.sceneId] || '未知场景';
 			}
 		}
 	}
@@ -429,6 +751,34 @@
 		min-height: 100vh;
 		box-sizing: border-box;
 		background-color: #f5f5f5;
+	}
+	
+	.nav-header {
+		background-color: #fff;
+		padding: 20rpx 0;
+		margin-bottom: 20rpx;
+		border-radius: 12rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+	}
+
+	.nav-tabs {
+		display: flex;
+		justify-content: space-around;
+		padding: 0 20rpx;
+	}
+
+	.nav-tab {
+		padding: 10rpx 20rpx;
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #666;
+		border-bottom: 4rpx solid transparent;
+		transition: all 0.3s ease;
+	}
+
+	.nav-tab.active {
+		color: #10b981;
+		border-bottom-color: #10b981;
 	}
 	
 	.report-header {
@@ -454,6 +804,13 @@
 	
 	.report-content {
 		flex: 1;
+	}
+
+	.report-body {
+		background-color: #fff;
+		border-radius: 12rpx;
+		padding: 30rpx;
+		margin-bottom: 20rpx;
 	}
 	
 	.score-section {
@@ -635,6 +992,184 @@
 	.suggestion-content {
 		flex: 1;
 		font-size: 28rpx;
+		color: #666;
+		line-height: 1.5;
+	}
+
+	.dialogue-content {
+		background-color: #fff;
+		border-radius: 12rpx;
+		padding: 30rpx;
+		margin-bottom: 20rpx;
+		min-height: 500rpx; /* 确保内容区域有最小高度 */
+	}
+
+	.dialogue-header {
+		text-align: center;
+		margin-bottom: 20rpx;
+	}
+
+	.dialogue-title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 10rpx;
+	}
+
+	.chat-messages {
+		height: 100%; /* 确保scroll-view高度为内容区域 */
+		overflow-y: auto; /* 允许垂直滚动 */
+		padding-bottom: 20rpx; /* 留出底部空间 */
+	}
+
+	.message-item {
+		display: flex;
+		align-items: flex-start;
+		margin-bottom: 20rpx;
+		padding: 10rpx 0;
+	}
+
+	.message-item.user {
+		flex-direction: row-reverse;
+	}
+
+	.message-item.user .message-avatar {
+		margin-right: 0;
+		margin-left: 15rpx;
+	}
+
+	.message-item.user .message-content {
+		align-items: flex-end;
+	}
+
+	.message-avatar {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 40rpx;
+		overflow: hidden;
+		margin-right: 15rpx;
+		flex-shrink: 0;
+	}
+
+	.message-avatar image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.message-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		max-width: 70%;
+	}
+
+	.voice-message-container {
+		display: flex;
+		align-items: center;
+		margin-bottom: 10rpx;
+	}
+
+	.voice-message {
+		height: 60rpx;
+		background-color: #f0f0f0;
+		border-radius: 30rpx;
+		display: flex;
+		align-items: center;
+		padding: 0 15rpx;
+		box-sizing: border-box;
+		cursor: pointer;
+		transition: background-color 0.2s;
+	}
+
+	.voice-message:hover {
+		background-color: #e0e0e0;
+	}
+
+	.voice-icon {
+		width: 30rpx;
+		height: 30rpx;
+		border-radius: 50%;
+		background-color: #10b981;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-right: 10rpx;
+		flex-shrink: 0;
+	}
+
+	.voice-icon span {
+		display: block;
+		width: 10rpx;
+		height: 10rpx;
+		border-left: 2rpx solid #fff;
+		border-right: 2rpx solid #fff;
+		border-top: 2rpx solid #fff;
+		transform: rotate(45deg);
+	}
+
+	.voice-icon.playing span {
+		animation: pulse 1s infinite;
+	}
+
+	@keyframes pulse {
+		0% {
+			transform: rotate(45deg) scale(0.8);
+			opacity: 0.7;
+		}
+		50% {
+			transform: rotate(45deg) scale(1);
+			opacity: 1;
+		}
+		100% {
+			transform: rotate(45deg) scale(0.8);
+			opacity: 0.7;
+		}
+	}
+
+	.voice-duration {
+		font-size: 24rpx;
+		color: #666;
+		margin-left: 10rpx;
+	}
+
+	.text-content-container {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.text-transcript {
+		font-size: 28rpx;
+		color: #333;
+		line-height: 1.6;
+		padding: 10rpx 0;
+		word-wrap: break-word;
+	}
+
+	.suggestion-wrapper {
+		margin-top: 10rpx;
+		padding-top: 10rpx;
+		border-top: 1rpx dashed #eee;
+	}
+
+	.suggestion-btn {
+		font-size: 26rpx;
+		color: #10b981;
+		text-align: right;
+		margin-bottom: 10rpx;
+		cursor: pointer;
+	}
+
+	.suggestion-title {
+		font-size: 28rpx;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 5rpx;
+	}
+
+	.suggestion-text {
+		font-size: 26rpx;
 		color: #666;
 		line-height: 1.5;
 	}

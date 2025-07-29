@@ -267,9 +267,8 @@
 			},
 			goToRecords() {
 				// 跳转到练习记录页面
-				uni.showToast({
-					title: '练习记录功能开发中',
-					icon: 'none'
+				uni.navigateTo({
+					url: '/pages/practice-history/practice-history'
 				});
 			}
 		}

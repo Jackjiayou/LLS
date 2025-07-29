@@ -23,6 +23,7 @@ class PracticeRecord(Base):
     practice_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     scenario_id = Column(Integer, ForeignKey("practice_scenarios.scenario_id"), nullable=False)
+    conversation_id = Column(String(255))  # 添加对话ID字段
     started_at = Column(DateTime, nullable=False, server_default=func.now())
     ended_at = Column(DateTime)
     status = Column(String(20), nullable=False, server_default='in_progress')
