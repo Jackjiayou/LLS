@@ -165,7 +165,10 @@
 				navScrollIntoView: '',
 				loading: false,
 				activeTab: 'report', // 新增：控制当前显示的tab
-				chatMessages: [] // 新增：存储对话消息
+				chatMessages: [], // 新增：存储对话消息
+				// 语音条宽度配置
+				minVoiceWidth: 120, // 最小宽度（rpx）
+				maxVoiceWidth: 400, // 最大宽度（rpx）
 			}
 		},
         onLoad(options) {
@@ -610,8 +613,17 @@
 				this.navScrollIntoView = '';
 			},
 			calculateVoiceWidth(duration) {
-				// 假设语音时长越长，宽度越大
-				return `${(duration / 3) * 100}px`; // 例如，3秒时宽度为100px
+				// 将时长转换为数字
+				const durationNum = parseInt(duration) || 0;
+				
+				// 根据时长计算宽度，时长越长宽度越大
+				// 这里使用一个简单的线性映射，可以根据需要调整
+				let width = this.minVoiceWidth + (durationNum / 60) * (this.maxVoiceWidth - this.minVoiceWidth);
+				
+				// 确保宽度在最小和最大值之间
+				width = Math.max(this.minVoiceWidth, Math.min(width, this.maxVoiceWidth));
+				
+				return width + 'rpx';
 			},
 			playVoice(url, index) {
 				console.log('播放语音:', url);
@@ -1088,43 +1100,51 @@
 	}
 
 	.voice-icon {
-		width: 30rpx;
-		height: 30rpx;
-		border-radius: 50%;
-		background-color: #10b981;
-		display: flex;
-		justify-content: center;
-		align-items: center;
+		width: 40rpx;
+		height: 40rpx;
 		margin-right: 10rpx;
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		flex-shrink: 0;
 	}
 
+	.voice-icon::before,
+	.voice-icon::after,
 	.voice-icon span {
-		display: block;
-		width: 10rpx;
-		height: 10rpx;
-		border-left: 2rpx solid #fff;
-		border-right: 2rpx solid #fff;
-		border-top: 2rpx solid #fff;
-		transform: rotate(45deg);
+		content: '';
+		width: 4rpx;
+		height: 16rpx;
+		background: #666;
+		border-radius: 4rpx 4rpx 0 0;
+		transform-origin: bottom;
+	}
+
+	.voice-icon.playing::before,
+	.voice-icon.playing::after,
+	.voice-icon.playing span {
+		animation: voice-wave 1.5s ease-in-out infinite;
+	}
+
+	.voice-icon.playing::before {
+		animation-delay: 0s;
 	}
 
 	.voice-icon.playing span {
-		animation: pulse 1s infinite;
+		animation-delay: 0.2s;
 	}
 
-	@keyframes pulse {
-		0% {
-			transform: rotate(45deg) scale(0.8);
-			opacity: 0.7;
+	.voice-icon.playing::after {
+		animation-delay: 0.4s;
+	}
+
+	@keyframes voice-wave {
+		0%, 100% {
+			transform: scaleY(1);
 		}
 		50% {
-			transform: rotate(45deg) scale(1);
-			opacity: 1;
-		}
-		100% {
-			transform: rotate(45deg) scale(0.8);
-			opacity: 0.7;
+			transform: scaleY(1.5);
 		}
 	}
 
