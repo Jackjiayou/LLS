@@ -27,6 +27,23 @@
 				<text class="scene-name">{{sceneName}}</text>
 			</view>
 			
+			<!-- 粘性导航栏 -->
+			<view class="sticky-nav">
+				<scroll-view class="dimension-nav" scroll-x="true" :scroll-into-view="navScrollIntoView" show-scrollbar="false">
+					<view 
+						v-for="(item, index) in report.analysis" 
+						:key="index" 
+						class="dimension-nav-item"
+						:id="'nav-item-' + index"
+						:class="{active: activeAnalysisIndex === index}"
+						@click="scrollToAnalysis(index)"
+					>
+						<view v-if="index === 1" class="key-point-tag">重点</view>
+						{{item.title}}
+					</view>
+				</scroll-view>
+			</view>
+			
 			<view class="report-body">
 				<!-- 整体评分 -->
 				<view class="score-section vertical">
@@ -45,19 +62,6 @@
 				<!-- 详细分析 -->
 				<view class="analysis-section">
 					<view class="section-title">详细分析</view>
-					<!-- 横向评分维度导航 -->
-					<scroll-view class="dimension-nav" scroll-x="true" :scroll-into-view="navScrollIntoView" show-scrollbar="false">
-						<view 
-							v-for="(item, index) in report.analysis" 
-							:key="index" 
-							class="dimension-nav-item"
-							:id="'nav-item-' + index"
-							:class="{active: activeAnalysisIndex === index}"
-							@click="scrollToAnalysis(index)"
-						>
-							{{item.title}}
-						</view>
-					</scroll-view>
 					<!-- 详细分析内容 -->
 					<view>
 						<view 
@@ -310,9 +314,36 @@
 					uni.pageScrollTo({
 						selector: `#analysis-${index}`,
 						duration: 300,
-						offsetTop: 120
+						offsetTop: 200  // 增加偏移量，让内容显示在更合适的位置
 					});
 				});
+			},
+			onPageScroll(e) {
+				// 监听页面滚动，更新当前活跃的指标
+				this.updateActiveAnalysisIndex(e.scrollTop);
+			},
+			updateActiveAnalysisIndex(scrollTop = 0) {
+				// 获取所有分析项的位置
+				const analysisItems = this.report.analysis;
+				if (!analysisItems || analysisItems.length === 0) return;
+				
+				// 计算每个分析项的位置（简化版本）
+				const analysisSectionTop = 500; // 分析区域的大概位置（调整）
+				const itemHeight = 200; // 每个分析项的大概高度
+				
+				for (let i = 0; i < analysisItems.length; i++) {
+					const itemTop = analysisSectionTop + (i * itemHeight);
+					const itemBottom = itemTop + itemHeight;
+					
+					// 如果当前滚动位置在这个分析项的范围内
+					if (scrollTop >= itemTop - 150 && scrollTop < itemBottom) {  // 增加检测范围
+						if (this.activeAnalysisIndex !== i) {
+							this.activeAnalysisIndex = i;
+							this.navScrollIntoView = `nav-item-${i}`;
+						}
+						break;
+					}
+				}
 			},
 			fetchOrganization(url, data, header) {
 				return new Promise((resolve, reject) => {
@@ -866,6 +897,68 @@
 		flex: 1;
 	}
 
+	/* 粘性导航栏 */
+	.sticky-nav {
+		position: sticky;
+		top: 0;
+		z-index: 100;
+		background-color: #fff;
+		border-bottom: 1rpx solid #eee;
+		padding: 20rpx 0;
+		margin-bottom: 20rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+	}
+
+	/* 横向评分维度导航 */
+	.dimension-nav {
+		width: 100%;
+		display: flex;
+		flex-direction: row;
+		overflow-x: auto;
+		white-space: nowrap;
+		margin-bottom: 15rpx;
+		padding: 0 20rpx;
+		background: #fff;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+	}
+	.dimension-nav::-webkit-scrollbar {
+		display: none;
+	}
+	.dimension-nav-item {
+		display: inline-block;
+		flex-shrink: 0;
+		padding: 8rpx 16rpx;
+		font-size: 26rpx;
+		color: #666;
+		border-radius: 20rpx;
+		margin-right: 12rpx;
+		background: #f5f5f5;
+		transition: all 0.3s ease;
+		white-space: nowrap;
+		position: relative;
+		border: 2rpx solid transparent;
+	}
+	.dimension-nav-item.active {
+		background: #10b981;
+		color: #fff;
+		font-weight: bold;
+		border-color: #10b981;
+	}
+	
+	/* 重点标签 */
+	.key-point-tag {
+		position: absolute;
+		top: -8rpx;
+		right: -8rpx;
+		background: #ff4757;
+		color: #fff;
+		font-size: 18rpx;
+		padding: 2rpx 6rpx;
+		border-radius: 8rpx;
+		transform: scale(0.8);
+	}
+	
 	.report-body {
 		background-color: #fff;
 		border-radius: 12rpx;
@@ -954,41 +1047,6 @@
 		padding-left: 15rpx;
 	}
 
-	/* 横向评分维度导航 */
-	.dimension-nav {
-		width: 100%;
-		display: flex;
-		flex-direction: row;
-		overflow-x: auto;
-		white-space: nowrap;
-		margin-bottom: 20rpx;
-		padding-bottom: 10rpx;
-		border-bottom: 1rpx solid #eee;
-		background: #fff;
-		-webkit-overflow-scrolling: touch;
-		scrollbar-width: none;
-	}
-	.dimension-nav::-webkit-scrollbar {
-		display: none;
-	}
-	.dimension-nav-item {
-		display: inline-block;
-		flex-shrink: 0;
-		padding: 4rpx 10rpx;
-		font-size: 24rpx;
-		color: #666;
-		border-radius: 18rpx;
-		margin-right: 6rpx;
-		background: #f5f5f5;
-		transition: background 0.2s, color 0.2s;
-		white-space: nowrap;
-	}
-	.dimension-nav-item.active {
-		background: #10b981;
-		color: #fff;
-		font-weight: bold;
-	}
-	
 	.analysis-item {
 		margin-bottom: 30rpx;
 		border-bottom: 1rpx solid #eee;
