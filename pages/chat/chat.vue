@@ -137,6 +137,7 @@
 				recordingTipText: '准备录音...', // 录音提示文本
 				recordingTime: 0, // 录音时长（秒）
 				recordingTimer: null, // 录音计时器
+				recordingStartTime: 0, // 录音开始时间戳
 				// 音频播放相关
 				currentAudioContext: null, // 当前播放的音频上下文
 				currentPlayingIndex: -1, // 当前正在播放的消息索引
@@ -205,6 +206,8 @@
 			const userMessages = this.messages.filter(msg => msg.from === 'user' && !msg.isLoading);
 			if (userMessages.length === 0) {
 				console.log('没有用户消息，直接返回，不保存');
+				// 停止正在播放的音频
+				this.stopCurrentAudio();
 				return false; // 允许返回
 			}
 			
@@ -218,6 +221,8 @@
 					if (res.confirm) {
 						// 用户确认离开，保存聊天记录并返回
 						console.log('用户确认离开，保存聊天记录');
+						// 停止正在播放的音频
+						this.stopCurrentAudio();
 						uni.showLoading({
 							title: '保存中...',
 							mask: true
@@ -238,6 +243,11 @@
 			// 阻止默认返回行为，由用户选择
 			return true;
 		},
+		onHide() {
+			// 页面隐藏时停止正在播放的音频
+			console.log('页面隐藏，停止音频播放');
+			this.stopCurrentAudio();
+		},
 		onUnload() {
 			// 页面卸载时检查是否需要保存聊天记录
 			console.log('页面卸载');
@@ -251,11 +261,8 @@
 				console.log('没有用户消息，不保存聊天记录');
 			}
 			
-			// 释放音频资源
-			if (this.audioContext) {
-				this.audioContext.destroy();
-				this.audioContext = null;
-			}
+			// 停止正在播放的音频
+			this.stopCurrentAudio();
 		},
 		methods: {
             // 开始新练习
@@ -562,29 +569,37 @@
 			},
 			// 开始录音
 			startRecording() {
+				// 防止重复启动录音
+				if (this.isRecording) return;
+				
 				this.isRecording = true;
 				this.showRecordingOverlay = true;
 				this.recordingTipText = '正在录音...';
 				this.recordingTime = 0;
 				
-				// 开始计时
-				this.recordingTimer = setInterval(() => {
-					this.recordingTime++;
-					
-					// 超过60秒自动停止
-					if (this.recordingTime >= 60) {
-						this.stopRecording();
-						uni.showToast({
-							title: '录音已达最大时长',
-							icon: 'none'
-						});
-					}
-				}, 1000);
+				// 记录开始时间，用于精确计时
+				this.recordingStartTime = Date.now();
 				
 				// 检查录音权限
 				uni.authorize({
 					scope: 'scope.record',
 					success: () => {
+						// 权限授权成功后再开始计时
+						this.recordingTimer = setInterval(() => {
+							// 使用精确的时间计算
+							const elapsedTime = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+							this.recordingTime = elapsedTime;
+							
+							// 超过60秒自动停止
+							if (this.recordingTime >= 60) {
+								this.stopRecording();
+								uni.showToast({
+									title: '录音已达最大时长',
+									icon: 'none'
+								});
+							}
+						}, 1000);
+						
 						// 开始录音
 						const options = {
 							duration: 60000, // 最长录音时间，单位ms，最大可设置为60s
@@ -604,7 +619,11 @@
 						setTimeout(() => {
 							this.showRecordingOverlay = false;
 							this.isRecording = false;
-							clearInterval(this.recordingTimer);
+							// 确保清除计时器
+							if (this.recordingTimer) {
+								clearInterval(this.recordingTimer);
+								this.recordingTimer = null;
+							}
 						}, 1500);
 						
 						uni.showModal({
@@ -648,8 +667,11 @@
 				this.isRecording = false;
 				this.recordingTipText = '发送中...';
 				
-				// 清除计时器
-				clearInterval(this.recordingTimer);
+				// 清除计时器并重置
+				if (this.recordingTimer) {
+					clearInterval(this.recordingTimer);
+					this.recordingTimer = null;
+				}
 				
 				// 停止录音
 				this.recorderManager.stop();
@@ -665,8 +687,11 @@
 				this.isRecording = false;
 				this.recordingTipText = '已取消';
 				
-				// 清除计时器
-				clearInterval(this.recordingTimer);
+				// 清除计时器并重置
+				if (this.recordingTimer) {
+					clearInterval(this.recordingTimer);
+					this.recordingTimer = null;
+				}
 				
 				// 停止录音
 				this.recorderManager.stop();
@@ -1181,6 +1206,24 @@
 					// 否则切换显示/隐藏
 					this.toggleSuggestion(index);
 				}
+			},
+			// 停止当前正在播放的音频
+			stopCurrentAudio() {
+				if (this.currentAudioContext) {
+					try {
+						this.currentAudioContext.stop();
+						this.currentAudioContext.destroy();
+						this.currentAudioContext = null;
+					} catch (e) {
+						console.error('停止音频失败:', e);
+					}
+				}
+				
+				// 重置播放状态
+				if (this.currentPlayingIndex >= 0 && this.currentPlayingIndex < this.messages.length) {
+					this.$set(this.messages[this.currentPlayingIndex], 'isPlaying', false);
+				}
+				this.currentPlayingIndex = -1;
 			}
 		}
         

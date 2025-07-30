@@ -57,27 +57,27 @@ scenes = [
 # 问题数据
 questions = {
     0: [  # 核苷酸产品介绍
-        {
-            "id": 1,
-            "sceneId": 0,
-            "text": "你们公司都有什么产品啊？",
-            "voiceUrl": "/static/audio/scene1-q1.mp3",
-            "duration": "5"
-         },
         # {
-        #     "id": 2,
+        #     "id": 1,
         #     "sceneId": 0,
-        #     "text": "这个产品我吃完以后能有什么效果或者改善呢？",
-        #     "voiceUrl": "/static/audio/scene1-q2.mp3",
-        #     "duration": "4"
-        # },
-        # {
-        #     "id": 3,
-        #     "sceneId": 0,
-        #     "text": "我有很多保健品的选择，为什么要选择你们的核苷酸呢？",
-        #     "voiceUrl": "/static/audio/scene1-q3.mp3",
+        #     "text": "你们公司都有什么产品啊？",
+        #     "voiceUrl": "/static/audio/scene1-q1.mp3",
         #     "duration": "5"
-        # }
+        #  },
+        {
+            "id": 2,
+            "sceneId": 0,
+            "text": "这个产品我吃完以后能有什么效果或者改善呢？",
+            "voiceUrl": "/static/audio/scene1-q2.mp3",
+            "duration": "4"
+        },
+        {
+            "id": 3,
+            "sceneId": 0,
+            "text": "我有很多保健品的选择，为什么要选择你们的核苷酸呢？",
+            "voiceUrl": "/static/audio/scene1-q3.mp3",
+            "duration": "5"
+        }
     ],
     1: [  # 新客户开发
         {

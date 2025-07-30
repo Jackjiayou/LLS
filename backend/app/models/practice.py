@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.database import Base
+from datetime import datetime
 
 class PracticeScenario(Base):
     __tablename__ = "practice_scenarios"
@@ -14,28 +15,34 @@ class PracticeScenario(Base):
     goal = Column(Text)
     created_at = Column(DateTime, server_default=func.now())
 
-    # 添加关系
-    practices = relationship("PracticeRecord", back_populates="scenario")
+    # 暂时注释掉关系定义，避免初始化错误
+    # practices = relationship("PracticeRecord", back_populates="scenario", 
+    #                        primaryjoin="PracticeScenario.scenario_id == PracticeRecord.scenario_id")
 
 class PracticeRecord(Base):
     __tablename__ = "practice_records"
 
     practice_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    scenario_id = Column(Integer, ForeignKey("practice_scenarios.scenario_id"), nullable=False)
-    conversation_id = Column(String(255))  # 添加对话ID字段
-    started_at = Column(DateTime, nullable=False, server_default=func.now())
+    user_id = Column(Integer, nullable=False)
+    scenario_id = Column(Integer, nullable=False)
+    status = Column(String(50), default='in_progress')
+    started_at = Column(DateTime, default=datetime.utcnow)
     ended_at = Column(DateTime)
-    status = Column(String(20), nullable=False, server_default='in_progress')
-    score_json = Column(JSON)
-    chat_history = Column(JSON, nullable=False, server_default='[]')  # 添加这行
-    is_deleted = Column(Integer, nullable=False, server_default='0')  # 逻辑删除字段：0-未删除，1-已删除
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    chat_history = Column(JSON)
+    score_json = Column(JSON)  # 保留原有字段，用于兼容
+    conversation_id = Column(String(255))
+    is_deleted = Column(Integer, nullable=False, server_default='0')
+    
+    # 新增三个独立字段
+    organization_score = Column(JSON)  # 语言组织能力分数和分析
+    persuasiveness_score = Column(JSON)  # 说服力分数和分析
+    fluency_pronunciation_expression_score = Column(JSON)  # 流利度、发音、表达分数和分析
 
-    # 添加关系
-    scenario = relationship("PracticeScenario", back_populates="practices")
-    messages = relationship("PracticeMessage", back_populates="practice")
+    # 暂时注释掉关系定义，避免初始化错误
+    # scenario = relationship("PracticeScenario", back_populates="practices",
+    #                       primaryjoin="PracticeRecord.scenario_id == PracticeScenario.scenario_id")
+    # messages = relationship("PracticeMessage", back_populates="practice")
 
 class PracticeMessage(Base):
     __tablename__ = "practice_messages"
@@ -50,5 +57,5 @@ class PracticeMessage(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     message_order = Column(Integer, nullable=False)
 
-    # 添加关系
-    practice = relationship("PracticeRecord", back_populates="messages")
+    # 暂时注释掉关系定义，避免初始化错误
+    # practice = relationship("PracticeRecord", back_populates="messages")

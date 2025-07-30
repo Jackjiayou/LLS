@@ -3,7 +3,7 @@ import uuid
 import random
 from typing import Dict, List, Any
 from app.models.report import Report, reports, dimension_templates, suggestion_templates
-from app.core.logging import logger
+from app.core.logger import logger
 
 def generate_report(scene_id: int, user_id: str, messages: List[Dict[str, Any]]) -> Report:
     """生成练习报告"""

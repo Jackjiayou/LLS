@@ -220,25 +220,68 @@ async def get_practice_history(
             # 计算偏移量
             offset = (page - 1) * limit
             
-            # 查询练习记录 - 确保用户ID类型匹配，并过滤已删除的记录
+            # 查询练习记录 - 确保用户ID类型匹配，过滤已删除的记录，并且有聊天记录
             practices = db.query(PracticeRecord).filter(
                 PracticeRecord.user_id == user_id,
-                PracticeRecord.is_deleted == 0
-            ).order_by(desc(PracticeRecord.created_at)).offset(offset).limit(limit).all()
+                PracticeRecord.is_deleted == 0,
+                PracticeRecord.chat_history.isnot(None),  # 确保有聊天记录
+                PracticeRecord.chat_history != '[]',  # 确保聊天记录不为空数组
+                PracticeRecord.chat_history != 'null'  # 确保聊天记录不为null字符串
+            ).order_by(desc(PracticeRecord.started_at)).offset(offset).limit(limit).all()
             
             # 格式化练习记录
             formatted_practices = []
             for practice in practices:
-                # 解析评分数据
-                score_json = practice.score_json or {}
-                organization_score = score_json.get("organization", {}).get("score", 0)
-                persuasiveness_score = score_json.get("persuasiveness", {}).get("score", 0)
-                fluency_score = score_json.get("fluency", {}).get("score", 0)
-                pronunciation_score = score_json.get("pronunciation", {}).get("score", 0)
-                expression_score = score_json.get("expression", {}).get("score", 0)
+                # 检查聊天记录是否包含有效消息
+                chat_history = practice.chat_history or []
+                if isinstance(chat_history, str):
+                    try:
+                        chat_history = json.loads(chat_history)
+                    except (json.JSONDecodeError, TypeError):
+                        chat_history = []
+                
+                # 过滤出有效的消息（有from和text字段）
+                valid_messages = []
+                if isinstance(chat_history, list):
+                    for msg in chat_history:
+                        if isinstance(msg, dict) and msg.get("from") and msg.get("text"):
+                            valid_messages.append(msg)
+                
+                # 如果没有有效消息，跳过这个练习记录
+                if not valid_messages:
+                    continue
+                
+                # 解析评分数据 - 使用新的独立字段
+                organization_score = 0
+                persuasiveness_score = 0
+                fluency_score = 0
+                pronunciation_score = 0
+                expression_score = 0
+                score_json = {}  # 初始化score_json变量
+                
+                # 从独立字段获取数据
+                if practice.organization_score:
+                    organization_score = practice.organization_score.get("score", 0)
+                
+                if practice.persuasiveness_score:
+                    persuasiveness_score = practice.persuasiveness_score.get("score", 0)
+                
+                if practice.fluency_pronunciation_expression_score:
+                    fluency_score = practice.fluency_pronunciation_expression_score.get("fluency", {}).get("score", 0)
+                    pronunciation_score = practice.fluency_pronunciation_expression_score.get("pronunciation", {}).get("score", 0)
+                    expression_score = practice.fluency_pronunciation_expression_score.get("expression", {}).get("score", 0)
+                
+                # 如果没有独立字段数据，尝试从旧的score_json获取
+                if not any([organization_score, persuasiveness_score, fluency_score, pronunciation_score, expression_score]):
+                    score_json = practice.score_json or {}
+                    organization_score = score_json.get("organization", {}).get("score", 0)
+                    persuasiveness_score = score_json.get("persuasiveness", {}).get("score", 0)
+                    fluency_score = score_json.get("fluency", {}).get("score", 0)
+                    pronunciation_score = score_json.get("pronunciation", {}).get("score", 0)
+                    expression_score = score_json.get("expression", {}).get("score", 0)
                 
                 # 判断是否有分析报告
-                has_report = bool(score_json and any([
+                has_report = bool(any([
                     organization_score > 0,
                     persuasiveness_score > 0,
                     fluency_score > 0,
@@ -280,10 +323,11 @@ async def get_practice_history(
                     "fluencyScore": fluency_score,
                     "pronunciationScore": pronunciation_score,
                     "expressionScore": expression_score,
-                    "createdAt": practice.created_at.strftime("%Y-%m-%d %H:%M") if practice.created_at else "",
+                    "createdAt": practice.started_at.strftime("%Y-%m-%d %H:%M") if practice.started_at else "",
                     "status": practice.status,
                     "statusText": status_text,
-                    "hasReport": has_report
+                    "hasReport": has_report,
+                    "messageCount": len(valid_messages)  # 添加消息数量
                 }
                 formatted_practices.append(formatted_practice)
             
@@ -302,12 +346,8 @@ async def get_report_data(
     practice_id: int,
     token: dict = Depends(get_current_user)
 ):
-    """获取已有的报告数据"""
     try:
         user_id = int(token["sub"])
-        
-        # from app.db.database import SessionLocal
-        # from app.models.practice import PracticeRecord
         
         with SessionLocal() as db:
             practice = db.query(PracticeRecord).filter(
@@ -317,34 +357,32 @@ async def get_report_data(
             ).first()
             
             if not practice:
-                raise HTTPException(status_code=404, detail="练习记录不存在")
+                raise HTTPException(status_code=404, detail="Practice record not found")
             
-            # 检查是否有报告数据
-            if not practice.score_json:
-                raise HTTPException(status_code=404, detail="该练习暂无报告数据")
+            # 从独立字段构建score_json
+            score_json = {}
             
-            score_data = practice.score_json
+            if practice.organization_score:
+                score_json["organization"] = practice.organization_score
             
-            # 格式化返回数据
-            report_data = {
-                "practiceId": practice.practice_id,
-                "conversationId": practice.conversation_id,
-                "scenarioId": practice.scenario_id,
-                "createdAt": practice.created_at.strftime("%Y-%m-%d %H:%M") if practice.created_at else "",
-                "scores": {
-                    "organization": score_data.get("organization", {}),
-                    "persuasiveness": score_data.get("persuasiveness", {}),
-                    "fluency": score_data.get("fluency", {}),
-                    "pronunciation": score_data.get("pronunciation", {}),
-                    "expression": score_data.get("expression", {})
+            if practice.persuasiveness_score:
+                score_json["persuasiveness"] = practice.persuasiveness_score
+            
+            if practice.fluency_pronunciation_expression_score:
+                score_json.update(practice.fluency_pronunciation_expression_score)
+            
+            # 如果没有独立字段数据，尝试从旧的score_json获取
+            if not score_json and practice.score_json:
+                score_json = practice.score_json
+            
+            return {
+                "success": True,
+                "data": {
+                    "practice_id": practice.practice_id,
+                    "scores": score_json
                 }
             }
             
-            return {"success": True, "data": report_data}
-            
-    except ValueError as e:
-        logger.error(f"用户ID转换失败: {str(e)}")
-        raise HTTPException(status_code=400, detail="Invalid user ID")
     except Exception as e:
         logger.error(f"获取报告数据失败: {str(e)}")
         traceback.print_exc()

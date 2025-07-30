@@ -397,44 +397,58 @@
 			},
 			
 			processReportData(reportData) {
-				const scores = reportData.scores;
+				console.log('从数据库获取的报告数据:', reportData);
+				const scores = reportData.scores || {};
+				console.log('分数数据:', scores);
+				
+				// 安全获取分数，避免undefined错误
+				const getScore = (key) => {
+					const scoreData = scores[key];
+					return scoreData && scoreData.score ? scoreData.score : 0;
+				};
+				
+				const getAnalysis = (key) => {
+					const scoreData = scores[key];
+					return scoreData && scoreData.analysis ? scoreData.analysis : '';
+				};
 				
 				// 计算总分
 				const scoreValues = [
-					scores.organization.score || 0,
-					scores.persuasiveness.score || 0,
-					scores.fluency.score || 0,
-					scores.pronunciation.score || 0,
-					scores.expression.score || 0
+					getScore('organization'),
+					getScore('persuasiveness'),
+					getScore('fluency'),
+					getScore('pronunciation'),
+					getScore('expression')
 				];
 				const overall = Math.round(scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length);
 				
 				// 组装维度数据
 				const dimensions = [
-					{ name: '语言组织能力', score: scores.organization.score || 0 },
-					{ name: '说服力', score: scores.persuasiveness.score || 0 },
-					{ name: '流利度', score: scores.fluency.score || 0 },
-					{ name: '发音准确度', score: scores.pronunciation.score || 0 },
-					{ name: '语音表达', score: scores.expression.score || 0 }
+					{ name: '语言组织能力', score: getScore('organization') },
+					{ name: '说服力', score: getScore('persuasiveness') },
+					{ name: '流利度', score: getScore('fluency') },
+					{ name: '发音准确度', score: getScore('pronunciation') },
+					{ name: '语音表达', score: getScore('expression') }
 				];
 				
 				// 组装分析数据
 				const analysis = [
-					{ title: '语言组织能力', score: scores.organization.score || 0, content: scores.organization.analysis || '' },
-					{ title: '说服力', score: scores.persuasiveness.score || 0, content: scores.persuasiveness.analysis || '' },
-					{ title: '流利度', score: scores.fluency.score || 0, content: scores.fluency.analysis || '' },
-					{ title: '发音准确度', score: scores.pronunciation.score || 0, content: scores.pronunciation.analysis || '' },
-					{ title: '语音表达', score: scores.expression.score || 0, content: scores.expression.analysis || '' }
+					{ title: '语言组织能力', score: getScore('organization'), content: getAnalysis('organization') },
+					{ title: '说服力', score: getScore('persuasiveness'), content: getAnalysis('persuasiveness') },
+					{ title: '流利度', score: getScore('fluency'), content: getAnalysis('fluency') },
+					{ title: '发音准确度', score: getScore('pronunciation'), content: getAnalysis('pronunciation') },
+					{ title: '语音表达', score: getScore('expression'), content: getAnalysis('expression') }
 				];
 				
 				const suggestions = [
-					scores.organization.analysis || '',
-					scores.persuasiveness.analysis || '',
-					scores.fluency.analysis || '',
-					scores.pronunciation.analysis || '',
-					scores.expression.analysis || ''
+					getAnalysis('organization'),
+					getAnalysis('persuasiveness'),
+					getAnalysis('fluency'),
+					getAnalysis('pronunciation'),
+					getAnalysis('expression')
 				];
 				
+				console.log('处理后的报告数据:', { overall, dimensions, analysis });
 				this.report = { overall, dimensions, analysis, suggestions };
 			},
 			

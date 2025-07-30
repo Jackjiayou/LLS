@@ -72,7 +72,49 @@ class ConversationService:
 
             return ''
 
-    async def  analyze_persuasiveness(self, practice_id: int,output_path :str, conversation_id: str, user_id: str) -> dict:
+    def _update_score_json_atomic(self, practice_id: int, updates: dict) -> None:
+        """
+        原子性地更新score_json，避免并发问题
+        使用重试机制来处理并发冲突
+        """
+        import time
+        
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                with SessionLocal() as db:
+                    # 获取最新的practice记录
+                    practice = db.query(PracticeRecord).filter(
+                        PracticeRecord.practice_id == practice_id
+                    ).first()
+                    
+                    if not practice:
+                        raise ValueError(f"Practice record not found: {practice_id}")
+                    
+                    # 获取现有的score_json，如果不存在则创建新的
+                    existing_score_json = practice.score_json or {}
+                    
+                    # 应用更新
+                    existing_score_json.update(updates)
+                    
+                    # 存储到practice
+                    practice.score_json = existing_score_json
+                    db.commit()
+                    
+                    logger.info(f"原子更新score_json完成 - practice_id: {practice_id}, 更新: {list(updates.keys())}")
+                    return
+                    
+            except Exception as e:
+                retry_count += 1
+                logger.warning(f"更新score_json失败，重试 {retry_count}/{max_retries}: {str(e)}")
+                if retry_count >= max_retries:
+                    logger.error(f"更新score_json最终失败: {str(e)}")
+                    raise
+                time.sleep(0.1 * retry_count)  # 指数退避
+
+    async def analyze_persuasiveness(self, practice_id: int,output_path :str, conversation_id: str, user_id: str) -> dict:
         """
         对练习进行分析打分，返回各项分数和分析文本
         """
@@ -175,15 +217,19 @@ class ConversationService:
 
                 pers_score, pers_analysis = call_llm_for_ability(dialogue_str, "说服力")
 
-                # 5. 获取现有的score_json，如果不存在则创建新的
-                existing_score_json = practice.score_json or {}
+                # 5. 直接保存到独立字段，避免并发问题
+                logger.info(f"准备更新说服力数据 - 分数: {pers_score}, 分析: {pers_analysis[:50]}...")
+                with SessionLocal() as db:
+                    practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+                    if practice:
+                        practice.persuasiveness_score = {"score": pers_score, "analysis": pers_analysis}
+                        db.commit()
+                        logger.info(f"说服力数据保存成功 - practice_id: {practice_id}")
+                    else:
+                        logger.error(f"Practice record not found: {practice_id}")
                 
-                # 更新persuasiveness部分
-                existing_score_json["persuasiveness"] = {"score": pers_score, "analysis": pers_analysis}
-
-                # 存储到practice
-                practice.score_json = existing_score_json
-                db.commit()
+                # 添加调试信息
+                logger.info(f"说服力分析完成 - 分数: {pers_score}, 分析: {pers_analysis[:100]}...")
 
                 return {"persuasiveness": {"score": pers_score, "analysis": pers_analysis}}
         except Exception as e:
@@ -295,15 +341,19 @@ class ConversationService:
 
                 org_score, org_analysis = call_llm_for_ability(dialogue_str, "语言组织能力")
 
-                # 5. 获取现有的score_json，如果不存在则创建新的
-                existing_score_json = practice.score_json or {}
+                # 5. 直接保存到独立字段，避免并发问题
+                logger.info(f"准备更新语言组织能力数据 - 分数: {org_score}, 分析: {org_analysis[:50]}...")
+                with SessionLocal() as db:
+                    practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+                    if practice:
+                        practice.organization_score = {"score": org_score, "analysis": org_analysis}
+                        db.commit()
+                        logger.info(f"语言组织能力数据保存成功 - practice_id: {practice_id}")
+                    else:
+                        logger.error(f"Practice record not found: {practice_id}")
                 
-                # 更新organization部分
-                existing_score_json["organization"] = {"score": org_score, "analysis": org_analysis}
-
-                # 存储到practice
-                practice.score_json = existing_score_json
-                db.commit()
+                # 添加调试信息
+                logger.info(f"语言组织能力分析完成 - 分数: {org_score}, 分析: {org_analysis[:100]}...")
 
                 return {"organization": {"score": org_score, "analysis": org_analysis}}
         except Exception as e:
@@ -423,17 +473,20 @@ class ConversationService:
                 pronunciation_score, pronunciation_analysis = calc_pronunciation(json_result)
                 expression_score, expression_analysis = calc_expression(json_result)
 
-                # 5. 获取现有的score_json，如果不存在则创建新的
-                existing_score_json = practice.score_json or {}
-                
-                # 更新fluency、pronunciation、expression部分
-                existing_score_json["fluency"] = {"score": fluency_score, "analysis": fluency_analysis}
-                existing_score_json["pronunciation"] = {"score": pronunciation_score, "analysis": pronunciation_analysis}
-                existing_score_json["expression"] = {"score": expression_score, "analysis": expression_analysis}
-
-                # 存储到practice
-                practice.score_json = existing_score_json
-                db.commit()
+                # 5. 直接保存到独立字段，避免并发问题
+                logger.info(f"准备更新流利度等数据 - fluency: {fluency_score}, pronunciation: {pronunciation_score}, expression: {expression_score}")
+                with SessionLocal() as db:
+                    practice = db.query(PracticeRecord).filter(PracticeRecord.practice_id == practice_id).first()
+                    if practice:
+                        practice.fluency_pronunciation_expression_score = {
+                            "fluency": {"score": fluency_score, "analysis": fluency_analysis},
+                            "pronunciation": {"score": pronunciation_score, "analysis": pronunciation_analysis},
+                            "expression": {"score": expression_score, "analysis": expression_analysis}
+                        }
+                        db.commit()
+                        logger.info(f"流利度等数据保存成功 - practice_id: {practice_id}")
+                    else:
+                        logger.error(f"Practice record not found: {practice_id}")
 
                 return {
                     "fluency": {"score": fluency_score, "analysis": fluency_analysis},
