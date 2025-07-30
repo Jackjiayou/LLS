@@ -312,6 +312,31 @@ async def get_practice_history(
                 }
                 status_text = status_texts.get(practice.status, '未知状态')
                 
+                # 计算练习时长（使用开始时间和结束时间）
+                total_duration = 0
+                if practice.started_at and practice.ended_at:
+                    try:
+                        time_diff = practice.ended_at - practice.started_at
+                        total_duration = int(time_diff.total_seconds())
+                    except (AttributeError, TypeError):
+                        # 如果时间计算失败，回退到从聊天记录计算
+                        if isinstance(chat_history, list):
+                            for msg in chat_history:
+                                if isinstance(msg, dict) and msg.get("duration"):
+                                    try:
+                                        total_duration += int(msg.get("duration", 0))
+                                    except (ValueError, TypeError):
+                                        pass
+                else:
+                    # 如果没有结束时间，从聊天记录计算
+                    if isinstance(chat_history, list):
+                        for msg in chat_history:
+                            if isinstance(msg, dict) and msg.get("duration"):
+                                try:
+                                    total_duration += int(msg.get("duration", 0))
+                                except (ValueError, TypeError):
+                                    pass
+                
                 formatted_practice = {
                     "practiceId": practice.practice_id,
                     "conversationId": practice.conversation_id or '',
@@ -327,7 +352,8 @@ async def get_practice_history(
                     "status": practice.status,
                     "statusText": status_text,
                     "hasReport": has_report,
-                    "messageCount": len(valid_messages)  # 添加消息数量
+                    "messageCount": len(valid_messages),  # 添加消息数量
+                    "duration": total_duration  # 添加总时长
                 }
                 formatted_practices.append(formatted_practice)
             

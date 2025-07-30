@@ -23,27 +23,29 @@
 					<text class="feature-title">实时语音对话</text>
 				</view>
 				<view class="voice-description">
-					<text class="desc-text">• 实时语音识别，支持语音输入，准确率高，响应速度快，提升交互体验</text>
+					<!-- <text class="desc-text">• 实时语音识别，支持语音输入，准确率高，响应速度快，提升交互体验</text> -->
+                    <text class="desc-text">• 准确率高，响应速度快，提升交互体验</text>
 				</view>
                 <view class="feature-header">
                 	<uni-icons type="mic" size="24" color="#1AAD19"></uni-icons>
                 	<text class="feature-title">数字人制作</text>
                 </view>
                 <view class="voice-description">
-                	<text class="desc-text">• 支持“直传”与“分步式（克隆+合成）”两套流程制作数字人，支持克隆语音语色合成数字人</text>
+                    <text class="desc-text">•点击制作数字人完成数字人克隆，音色克隆后合成数字人，合成视频列表展示合成的数字人视频</text>
+                	<!-- <text class="desc-text">• 支持“直传”与“分步式（克隆+合成）”两套流程制作数字人，支持克隆语音语色合成数字人</text> -->
                 </view>
 			</view>
 			
 			<!-- 功能按钮 -->
 			<view class="button-container">
-				<button class="primary-btn" @click="openDigitalHuman">
+<!-- 				<button class="primary-btn" @click="openDigitalHuman">
 					<uni-icons type="chat" size="20" color="#fff"></uni-icons>
 					<text class="btn-text">实时语音对话（VIP专享）</text>
 				</button>
 				<button class="create-btn" @click="createDigitalHuman">
 					<uni-icons type="plus" size="20" color="#fff"></uni-icons>
 					<text class="btn-text">制作数字人（直传）</text>
-				</button>
+				</button> -->
 				<button class="clone-btn" @click="goToCloneDigitalHuman">
 					<uni-icons type="person" size="20" color="#fff"></uni-icons>
 					<text class="btn-text">制作数字人</text>
