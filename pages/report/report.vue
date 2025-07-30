@@ -177,24 +177,26 @@
 			}
 		},
         onLoad(options) {
-			const { practiceId, conversationId, sceneId, fromChat } = options;
+			const { practiceId, conversationId, sceneId, fromChat, generateNew } = options;
 			this.practiceId = practiceId;
 			this.conversationId = conversationId || 'default-conversation-id'; // 添加默认值
 			this.sceneId = parseInt(sceneId) || 0;
 			this.fromChat = fromChat === 'true'; // 是否来自聊天页面
+			this.generateNew = generateNew === 'true'; // 是否强制重新生成
 			
 			// 添加调试信息
 			console.log('report.vue onLoad options:', options);
 			console.log('conversationId:', this.conversationId);
 			console.log('practiceId:', this.practiceId);
 			console.log('fromChat:', this.fromChat);
+			console.log('generateNew:', this.generateNew);
 			
 			// 获取场景名称
 			this.getSceneName();
 			
 			// 根据来源决定是获取已有报告还是重新生成
-			if (this.fromChat) {
-				// 来自聊天页面，重新生成报告
+			if (this.fromChat || this.generateNew) {
+				// 来自聊天页面或强制重新生成，重新生成报告
 				this.generateNewReport(practiceId);
 			} else {
 				// 来自练习历史，尝试从数据库获取已有报告
