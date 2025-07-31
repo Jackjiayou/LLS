@@ -78,6 +78,8 @@
 				@touchcancel="handleTouchCancel">
 				{{ isRecording ? '松开发送' : (isRobotLoading ? '顾客正在输入...' : '按住说话') }}
 			</button>
+			
+
 		</view>
 		
 		<!-- 录音提示浮层 -->
@@ -473,6 +475,168 @@
 					}
 				});
 			},
+			
+			// 自动播放机器人语音
+			autoPlayRobotVoice(voiceUrl, messageIndex) {
+				// 检查是否已经有音频在播放
+				if (this.currentAudioContext) {
+					// 停止当前播放的音频
+					try {
+						this.currentAudioContext.stop();
+						this.currentAudioContext.destroy();
+					} catch (e) {
+						console.error('停止当前音频失败:', e);
+					}
+					
+					// 重置之前播放的消息状态
+					if (this.currentPlayingIndex >= 0 && this.currentPlayingIndex < this.messages.length) {
+						this.$set(this.messages[this.currentPlayingIndex], 'isPlaying', false);
+					}
+				}
+				
+				// 设置当前消息为播放状态
+				this.$set(this.messages[messageIndex], 'isPlaying', true);
+				this.currentPlayingIndex = messageIndex;
+				
+				// 创建音频上下文
+				this.currentAudioContext = uni.createInnerAudioContext();
+				
+				// 设置音频源
+				if (voiceUrl.startsWith('http')) {
+					// 如果是网络URL，先下载到本地再播放
+					console.log('自动播放：下载并播放网络音频:', voiceUrl);
+					
+					uni.downloadFile({
+						url: voiceUrl,
+						success: (res) => {
+							console.log('下载成功:', res);
+							if (res.statusCode === 200) {
+								console.log('设置音频源:', res.tempFilePath);
+								this.currentAudioContext.src = res.tempFilePath;
+								
+								// 检查文件是否存在
+								uni.getFileInfo({
+									filePath: res.tempFilePath,
+									success: (fileInfo) => {
+										console.log('文件信息:', fileInfo);
+										this.startAutoPlayback(this.currentAudioContext, messageIndex);
+									},
+									fail: (fileErr) => {
+										console.error('文件检查失败:', fileErr);
+										this.resetPlayState(messageIndex);
+									}
+								});
+							} else {
+								console.error('自动播放：下载失败，状态码:', res.statusCode);
+								this.resetPlayState(messageIndex);
+							}
+						},
+						fail: (err) => {
+							console.error('自动播放：下载失败:', err);
+							this.resetPlayState(messageIndex);
+						}
+					});
+				} else {
+					// 如果是本地文件
+					console.log('设置本地音频源:', voiceUrl);
+					this.currentAudioContext.src = voiceUrl;
+					this.startAutoPlayback(this.currentAudioContext, messageIndex);
+				}
+			},
+			
+			// 开始自动播放
+			startAutoPlayback(audioContext, messageIndex) {
+				// 监听播放开始
+				audioContext.onPlay(() => {
+					console.log('自动播放开始');
+				});
+				
+				// 监听播放错误
+				audioContext.onError((err) => {
+					console.error('自动播放错误:', err);
+					console.error('错误详情:', JSON.stringify(err));
+					this.resetPlayState(messageIndex);
+				});
+				
+				// 监听播放结束
+				audioContext.onEnded(() => {
+					console.log('自动播放结束');
+					this.resetPlayState(messageIndex);
+				});
+				
+				// 监听音频加载完成
+				audioContext.onCanplay(() => {
+					console.log('音频加载完成，开始播放');
+					console.log('音频信息:', {
+						src: audioContext.src,
+						duration: audioContext.duration,
+						volume: audioContext.volume
+					});
+				});
+				
+				// 设置音量
+				audioContext.volume = 1.0;
+				
+				// 开始播放
+				try {
+					audioContext.play();
+				} catch (e) {
+					console.error('自动播放失败:', e);
+					this.resetPlayState(messageIndex);
+				}
+			},
+			
+			// 重置播放状态
+			resetPlayState(messageIndex) {
+				if (messageIndex >= 0 && messageIndex < this.messages.length) {
+					this.$set(this.messages[messageIndex], 'isPlaying', false);
+				}
+				this.currentPlayingIndex = -1;
+				
+				// 释放资源
+				if (this.currentAudioContext) {
+					try {
+						this.currentAudioContext.destroy();
+						this.currentAudioContext = null;
+					} catch (e) {
+						console.error('销毁音频上下文失败:', e);
+					}
+				}
+			},
+			
+			// 测试音频播放（调试用）
+			testAudioPlayback() {
+				console.log('=== 测试音频播放 ===');
+				const testUrl = 'https://ai.dl-dd.com/uploads/tts/3/aec540f3-24c4-4d40-8b8d-4116406597f6/1753930457_d06bede0-2f75-450f-86de-d1bfb7c6fe5b.mp3';
+				
+				// 创建新的音频上下文
+				const testAudio = uni.createInnerAudioContext();
+				
+				// 监听事件
+				testAudio.onPlay(() => {
+					console.log('测试音频开始播放');
+				});
+				
+				testAudio.onError((err) => {
+					console.error('测试音频播放错误:', err);
+				});
+				
+				testAudio.onEnded(() => {
+					console.log('测试音频播放结束');
+					testAudio.destroy();
+				});
+				
+				testAudio.onCanplay(() => {
+					console.log('测试音频加载完成');
+				});
+				
+				// 设置音频源并播放
+				testAudio.src = testUrl;
+				testAudio.volume = 1.0;
+				
+				console.log('开始测试播放...');
+				testAudio.play();
+			},
 			// 获取机器人消息
 			async getRobotMessage() {
 				try {
@@ -522,6 +686,13 @@
 							this.scrollToBottom();
 							// 设置机器人消息加载标志为false
 							this.isRobotLoading = false;
+							
+							// 自动播放机器人语音
+							if (response.data.voiceUrl && response.data.duration) {
+								setTimeout(() => {
+									this.autoPlayRobotVoice(response.data.voiceUrl, idx);
+								}, 500); // 延迟500ms确保下载完成
+							}
 						});
 					} else {
 						// 获取失败时移除假语音条
@@ -948,7 +1119,7 @@
 					}).exec();
 				});
 			},
-			// 播放语音
+						// 播放语音
 			playVoice(voiceUrl, index) {
 				console.log('播放语音', voiceUrl);
 				
@@ -963,185 +1134,12 @@
 				
 				// 如果点击的是当前正在播放的语音，则停止播放
 				if (this.currentPlayingIndex === index) {
-					try {
-						this.currentAudioContext.stop();
-						this.currentAudioContext.destroy();
-						this.currentAudioContext = null;
-						this.$set(this.messages[index], 'isPlaying', false);
-						this.currentPlayingIndex = -1;
-					} catch (e) {
-						console.error('停止当前音频失败:', e);
-					}
+					this.resetPlayState(index);
 					return;
 				}
 				
-				// 如果当前有音频在播放，先停止
-				if (this.currentAudioContext) {
-					try {
-						this.currentAudioContext.stop();
-						this.currentAudioContext.destroy();
-					} catch (e) {
-						console.error('停止当前音频失败:', e);
-					}
-					
-					// 重置之前播放的消息状态
-					if (this.currentPlayingIndex >= 0 && this.currentPlayingIndex < this.messages.length) {
-						this.$set(this.messages[this.currentPlayingIndex], 'isPlaying', false);
-					}
-				}
-				
-				// 设置当前消息为播放状态
-				this.$set(this.messages[index], 'isPlaying', true);
-				this.currentPlayingIndex = index;
-				
-				// 创建音频上下文
-				this.currentAudioContext = uni.createInnerAudioContext();
-				
-				// 设置音频源
-				if (voiceUrl.startsWith('http')) {
-					// 如果是网络URL，先下载到本地再播放
-					console.log('下载并播放网络音频:', voiceUrl);
-					
-					// 下载音频文件
-					uni.downloadFile({
-						url: voiceUrl,
-						success: (res) => {
-							console.log('音频下载成功:', res);
-							if (res.statusCode === 200) {
-								// 下载成功，使用本地路径播放
-								this.currentAudioContext.src = res.tempFilePath;
-								console.log('使用下载的本地文件播放:', res.tempFilePath);
-				
-				// 监听播放开始
-				this.currentAudioContext.onPlay(() => {
-					console.log('开始播放');
-				});
-				
-				// 监听播放错误
-				this.currentAudioContext.onError((err) => {
-					console.error('播放错误:', err);
-					console.error('播放失败的URL:', voiceUrl);
-					
-					// 重置播放状态
-					this.$set(this.messages[index], 'isPlaying', false);
-					this.currentPlayingIndex = -1;
-					
-					// 释放资源
-					try {
-						this.currentAudioContext.destroy();
-						this.currentAudioContext = null;
-					} catch (e) {
-						console.error('销毁音频上下文失败:', e);
-					}
-				});
-				
-				// 监听播放结束
-				this.currentAudioContext.onEnded(() => {
-					console.log('播放结束');
-					// 重置播放状态
-					this.$set(this.messages[index], 'isPlaying', false);
-					this.currentPlayingIndex = -1;
-					
-					// 释放资源
-					try {
-						this.currentAudioContext.destroy();
-						this.currentAudioContext = null;
-					} catch (e) {
-						console.error('销毁音频上下文失败:', e);
-					}
-				});
-				
-				// 开始播放
-				try {
-					this.currentAudioContext.play();
-				} catch (e) {
-					console.error('播放音频失败:', e);
-					// 重置播放状态
-					this.$set(this.messages[index], 'isPlaying', false);
-					this.currentPlayingIndex = -1;
-				}
-					} else {
-								console.error('下载失败，状态码:', res.statusCode);
-								
-								// 重置播放状态
-								this.$set(this.messages[index], 'isPlaying', false);
-								this.currentPlayingIndex = -1;
-						}
-					},
-					fail: (err) => {
-							console.error('下载失败:', err);
-							
-							// 重置播放状态
-						this.$set(this.messages[index], 'isPlaying', false);
-						this.currentPlayingIndex = -1;
-						}
-					});
-				} else {
-					// 如果是本地临时文件，先检查文件是否存在
-					uni.getFileInfo({
-						filePath: voiceUrl,
-						success: () => {
-							this.currentAudioContext.src = voiceUrl;
-							console.log('使用本地文件播放:', voiceUrl);
-				
-				// 监听播放开始
-				this.currentAudioContext.onPlay(() => {
-					console.log('开始播放');
-				});
-				
-				// 监听播放错误
-				this.currentAudioContext.onError((err) => {
-					console.error('播放错误:', err);
-					console.error('播放失败的URL:', voiceUrl);
-					
-					// 重置播放状态
-					this.$set(this.messages[index], 'isPlaying', false);
-					this.currentPlayingIndex = -1;
-					
-					// 释放资源
-					try {
-						this.currentAudioContext.destroy();
-						this.currentAudioContext = null;
-					} catch (e) {
-						console.error('销毁音频上下文失败:', e);
-					}
-				});
-				
-				// 监听播放结束
-				this.currentAudioContext.onEnded(() => {
-					console.log('播放结束');
-					// 重置播放状态
-					this.$set(this.messages[index], 'isPlaying', false);
-					this.currentPlayingIndex = -1;
-					
-					// 释放资源
-					try {
-						this.currentAudioContext.destroy();
-						this.currentAudioContext = null;
-					} catch (e) {
-						console.error('销毁音频上下文失败:', e);
-					}
-				});
-				
-				// 开始播放
-				try {
-					this.currentAudioContext.play();
-				} catch (e) {
-					console.error('播放音频失败:', e);
-					// 重置播放状态
-					this.$set(this.messages[index], 'isPlaying', false);
-					this.currentPlayingIndex = -1;
-				}
-			},
-						fail: () => {
-							console.error('文件不存在:', voiceUrl);
-							
-							// 重置播放状态
-							this.$set(this.messages[index], 'isPlaying', false);
-							this.currentPlayingIndex = -1;
-						}
-					});
-				}
+				// 使用统一的播放逻辑
+				this.autoPlayRobotVoice(voiceUrl, index);
 			},
 			toggleSuggestion(index) {
 				// 切换显示/隐藏建议
@@ -1267,21 +1265,9 @@
 			},
 			// 停止当前正在播放的音频
 			stopCurrentAudio() {
-				if (this.currentAudioContext) {
-					try {
-						this.currentAudioContext.stop();
-						this.currentAudioContext.destroy();
-						this.currentAudioContext = null;
-					} catch (e) {
-						console.error('停止音频失败:', e);
-					}
+				if (this.currentPlayingIndex >= 0) {
+					this.resetPlayState(this.currentPlayingIndex);
 				}
-				
-				// 重置播放状态
-				if (this.currentPlayingIndex >= 0 && this.currentPlayingIndex < this.messages.length) {
-					this.$set(this.messages[this.currentPlayingIndex], 'isPlaying', false);
-				}
-				this.currentPlayingIndex = -1;
 			},
 			
 			// 强制停止录音
