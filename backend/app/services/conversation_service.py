@@ -141,7 +141,7 @@ class ConversationService:
 
                 # 2. 语言组织能力、说服力（大模型分析，伪代码/接口）
                 # 可以用OpenAI、Qwen等大模型API
-                def call_llm_for_ability(texts, ability_type):
+                def call_llm_for_ability(texts, ability_type, max_retries=3):
                     import re
                     # ability_type: "organization" or "persuasiveness"
                     # 伪代码：实际用模型API
@@ -187,32 +187,57 @@ class ConversationService:
                                     
                                     请输出JSON格式：{{"score": 分数, "analysis": "详细分析"}}"""
 
-                    system_message = {
-                        'role': 'system',
-                        'content': prompt
-                    }
-
-                    messages = [system_message]
-                    str_reslt = getds.get_response_qwen(messages)
-
-                    # 1. 尝试提取 {...} 之间的内容
-                    match = re.search(r'\{.*?\}', str_reslt, re.DOTALL)
-                    if match:
-                        json_str = match.group(0)
+                    # 重试机制
+                    for attempt in range(max_retries):
                         try:
-                            result = json.loads(json_str)
-                            return result['score'], result['analysis']
+                            system_message = {
+                                'role': 'system',
+                                'content': prompt
+                            }
+
+                            messages = [system_message]
+                            str_reslt = getds.get_response_qwen(messages)
+                            
+                            # 添加调试日志
+                            logger.info(f"大模型返回原始结果 ({ability_type}, 第{attempt+1}次尝试): {str_reslt[:200]}...")
+
+                            # 1. 尝试提取 {...} 之间的内容
+                            match = re.search(r'\{.*?\}', str_reslt, re.DOTALL)
+                            if match:
+                                json_str = match.group(0)
+                                logger.info(f"提取到JSON字符串: {json_str}")
+                                try:
+                                    result = json.loads(json_str)
+                                    logger.info(f"JSON解析成功: score={result.get('score')}, analysis={result.get('analysis', '')[:50]}...")
+                                    return result['score'], result['analysis']
+                                except Exception as e:
+                                    logger.error(f"JSON解析失败: {e}, json_str: {json_str}")
+                            
+                            # 2. 尝试提取 score: xx analysis: ...
+                            match2 = re.search(r'score[:：]\s*(\d+)[,， ]*analysis[:：]?\s*(.*)', str_reslt,
+                                               re.IGNORECASE | re.DOTALL)
+                            if match2:
+                                score = int(match2.group(1))
+                                analysis = match2.group(2).strip()
+                                logger.info(f"正则解析成功: score={score}, analysis={analysis[:50]}...")
+                                return score, analysis
+                            
+                            # 3. 如果解析失败且还有重试次数，继续重试
+                            if attempt < max_retries - 1:
+                                logger.warning(f"第{attempt+1}次解析失败，准备重试...")
+                                import time
+                                time.sleep(1)  # 等待1秒后重试
+                                continue
+                            
                         except Exception as e:
-                            print("JSON解析失败:", e, json_str)
-                    # 2. 尝试提取 score: xx analysis: ...
-                    match2 = re.search(r'score[:：]\s*(\d+)[,， ]*analysis[:：]?\s*(.*)', str_reslt, re.IGNORECASE|re.DOTALL)
-                    if match2:
-                        score = int(match2.group(1))
-                        analysis = match2.group(2).strip()
-                        return score, analysis
-                    # 3. 兜底
-                        print("大模型返回格式无法解析:", str_reslt)
-                    print("大模型返回格式错误:",str_reslt)
+                            logger.error(f"第{attempt+1}次调用大模型失败: {e}")
+                            if attempt < max_retries - 1:
+                                import time
+                                time.sleep(1)  # 等待1秒后重试
+                                continue
+                    
+                    # 所有重试都失败，返回兜底结果
+                    logger.error(f"大模型返回格式无法解析 ({ability_type}), 已重试{max_retries}次: {str_reslt}")
                     return 0, "大模型返回格式错误"
 
 
@@ -266,7 +291,7 @@ class ConversationService:
 
                 # 2. 语言组织能力、说服力（大模型分析，伪代码/接口）
                 # 可以用OpenAI、Qwen等大模型API
-                def call_llm_for_ability(texts, ability_type):
+                def call_llm_for_ability(texts, ability_type, max_retries=3):
                     import re
                     # ability_type: "organization" or "persuasiveness"
                     # 伪代码：实际用模型API
@@ -312,32 +337,57 @@ class ConversationService:
 
                                      请输出JSON格式：{{"score": 分数, "analysis": "详细分析"}}"""
 
-                    system_message = {
-                        'role': 'system',
-                        'content': prompt
-                    }
-
-                    messages = [system_message]
-                    str_reslt = getds.get_response_qwen(messages)
-
-                    # 1. 尝试提取 {...} 之间的内容
-                    match = re.search(r'\{.*?\}', str_reslt, re.DOTALL)
-                    if match:
-                        json_str = match.group(0)
+                    # 重试机制
+                    for attempt in range(max_retries):
                         try:
-                            result = json.loads(json_str)
-                            return result['score'], result['analysis']
+                            system_message = {
+                                'role': 'system',
+                                'content': prompt
+                            }
+
+                            messages = [system_message]
+                            str_reslt = getds.get_response_qwen(messages)
+                            
+                            # 添加调试日志
+                            logger.info(f"大模型返回原始结果 ({ability_type}, 第{attempt+1}次尝试): {str_reslt[:200]}...")
+
+                            # 1. 尝试提取 {...} 之间的内容
+                            match = re.search(r'\{.*?\}', str_reslt, re.DOTALL)
+                            if match:
+                                json_str = match.group(0)
+                                logger.info(f"提取到JSON字符串: {json_str}")
+                                try:
+                                    result = json.loads(json_str)
+                                    logger.info(f"JSON解析成功: score={result.get('score')}, analysis={result.get('analysis', '')[:50]}...")
+                                    return result['score'], result['analysis']
+                                except Exception as e:
+                                    logger.error(f"JSON解析失败: {e}, json_str: {json_str}")
+                            
+                            # 2. 尝试提取 score: xx analysis: ...
+                            match2 = re.search(r'score[:：]\s*(\d+)[,， ]*analysis[:：]?\s*(.*)', str_reslt,
+                                               re.IGNORECASE | re.DOTALL)
+                            if match2:
+                                score = int(match2.group(1))
+                                analysis = match2.group(2).strip()
+                                logger.info(f"正则解析成功: score={score}, analysis={analysis[:50]}...")
+                                return score, analysis
+                            
+                            # 3. 如果解析失败且还有重试次数，继续重试
+                            if attempt < max_retries - 1:
+                                logger.warning(f"第{attempt+1}次解析失败，准备重试...")
+                                import time
+                                time.sleep(1)  # 等待1秒后重试
+                                continue
+                            
                         except Exception as e:
-                            print("JSON解析失败:", e, json_str)
-                    # 2. 尝试提取 score: xx analysis: ...
-                    match2 = re.search(r'score[:：]\s*(\d+)[,， ]*analysis[:：]?\s*(.*)', str_reslt,
-                                       re.IGNORECASE | re.DOTALL)
-                    if match2:
-                        score = int(match2.group(1))
-                        analysis = match2.group(2).strip()
-                        return score, analysis
-                    # 3. 兜底
-                    print("大模型返回格式无法解析:", str_reslt)
+                            logger.error(f"第{attempt+1}次调用大模型失败: {e}")
+                            if attempt < max_retries - 1:
+                                import time
+                                time.sleep(1)  # 等待1秒后重试
+                                continue
+                    
+                    # 所有重试都失败，返回兜底结果
+                    logger.error(f"大模型返回格式无法解析 ({ability_type}), 已重试{max_retries}次: {str_reslt}")
                     return 0, "大模型返回格式错误"
 
                 org_score, org_analysis = call_llm_for_ability(dialogue_str, "语言组织能力")
