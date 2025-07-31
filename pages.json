@@ -153,7 +153,7 @@
 			"selectedIconPath": "static/tabbar/agent.png",
 			"text": "智能体"
 		}, {
-			"pagePath": "pages/digital-human/digital-human",
+			"pagePath": "pages/create-digital-human-advanced/create-digital-human-advanced",
 			"iconPath": "static/tabbar/profile.png",
 			"selectedIconPath": "static/tabbar/profile.png",
 			"text": "数字人"
