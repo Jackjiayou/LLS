@@ -209,6 +209,15 @@
 		},
 		onShow() {
 			console.log('页面显示，fromChat:', this.fromChat);
+			
+			// 如果当前在报告tab且有数据，确保雷达图显示
+			if (this.activeTab === 'report' && this.report.dimensions.length > 0) {
+				setTimeout(() => {
+					if (this.$refs.canvas) {
+						this.$refs.canvas.init(this.initChart);
+					}
+				}, 100);
+			}
 		},
 		onHide() {
 			console.log('页面隐藏，fromChat:', this.fromChat);
@@ -698,6 +707,16 @@
 				this.activeTab = tab;
 				this.activeAnalysisIndex = 0; // 切换tab时重置分析索引
 				this.navScrollIntoView = '';
+				
+				// 切换到报告tab时，重新初始化雷达图
+				if (tab === 'report') {
+					// 延迟一点时间确保DOM完全渲染
+					setTimeout(() => {
+						if (this.$refs.canvas && this.report.dimensions.length > 0) {
+							this.$refs.canvas.init(this.initChart);
+						}
+					}, 200);
+				}
 			},
 			calculateVoiceWidth(duration) {
 				// 将时长转换为数字
