@@ -81,6 +81,19 @@
             <uni-icons type="right" size="16" color="#999"></uni-icons>
           </view>
         </view>
+        <!-- 数字人视频列表 -->
+        <view class="function-item" @click="goToSynthesizeList">
+          <view class="function-icon">
+            <uni-icons type="gear" size="32" color="#1AAD19"></uni-icons>
+          </view>
+          <view class="function-content">
+            <text class="function-title">数字人视频列表</text>
+            <text class="function-desc">展示列表</text>
+          </view>
+          <view class="function-arrow">
+            <uni-icons type="right" size="16" color="#55aa00"></uni-icons>
+          </view>
+        </view>
       </view>
     </view>
   </view>
@@ -97,6 +110,12 @@ export default {
     };
   },
   methods: {
+      goToSynthesizeList() {
+          console.log(uni.getStorageSync('token'))
+      	uni.navigateTo({
+      		url: '/pages/synthesize-list/synthesize-list'
+      	});
+      },
     goBack() {
       uni.navigateBack();
     },
