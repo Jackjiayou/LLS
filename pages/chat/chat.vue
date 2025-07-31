@@ -244,13 +244,17 @@
 			return true;
 		},
 		onHide() {
-			// 页面隐藏时停止正在播放的音频
-			console.log('页面隐藏，停止音频播放');
+			// 页面隐藏时停止正在播放的音频和录音
+			console.log('页面隐藏，停止音频播放和录音');
 			this.stopCurrentAudio();
+			this.forceStopRecording();
 		},
 		onUnload() {
 			// 页面卸载时检查是否需要保存聊天记录
 			console.log('页面卸载');
+			
+			// 强制停止录音
+			this.forceStopRecording();
 			
 			// 检查是否有用户消息
 			const userMessages = this.messages.filter(msg => msg.from === 'user' && !msg.isLoading);
@@ -560,11 +564,39 @@
 				// 监听录音错误事件
 				this.recorderManager.onError((res) => {
 					console.error('录音失败:', res);
-					uni.showToast({
-						title: '录音失败',
-						icon: 'none'
-					});
+					
+					// 清理录音状态
 					this.isRecording = false;
+					this.showRecordingOverlay = false;
+					
+					// 清除计时器
+					if (this.recordingTimer) {
+						clearInterval(this.recordingTimer);
+						this.recordingTimer = null;
+					}
+					
+					// 根据错误类型显示不同提示
+					if (res.errMsg && res.errMsg.includes('authorize')) {
+						// 权限相关错误
+						uni.showModal({
+							title: '录音权限',
+							content: '需要录音权限才能发送语音消息，请在设置中开启',
+							confirmText: '去设置',
+							cancelText: '取消',
+							success: (modalRes) => {
+								if (modalRes.confirm) {
+									uni.openSetting();
+								}
+							}
+						});
+					} else {
+						// 其他录音错误
+						uni.showToast({
+							title: '录音失败，请重试',
+							icon: 'none',
+							duration: 2000
+						});
+					}
 				});
 			},
 			// 开始录音
@@ -572,6 +604,37 @@
 				// 防止重复启动录音
 				if (this.isRecording) return;
 				
+				// 先检查权限状态，避免在录音过程中弹出权限请求
+				uni.getSetting({
+					success: (res) => {
+						if (res.authSetting['scope.record'] === false) {
+							// 权限被拒绝，提示用户手动开启
+							uni.showModal({
+								title: '提示',
+								content: '需要您授权录音权限才能发送语音消息，请在设置中开启',
+								confirmText: '去设置',
+								cancelText: '取消',
+								success: (modalRes) => {
+									if (modalRes.confirm) {
+										uni.openSetting();
+									}
+								}
+							});
+							return;
+						}
+						
+						// 权限已授权或未设置，开始录音流程
+						this.startRecordingWithPermission();
+					},
+					fail: () => {
+						// 获取设置失败，直接尝试录音
+						this.startRecordingWithPermission();
+					}
+				});
+			},
+			
+			// 带权限检查的录音开始
+			startRecordingWithPermission() {
 				this.isRecording = true;
 				this.showRecordingOverlay = true;
 				this.recordingTipText = '正在录音...';
@@ -580,83 +643,78 @@
 				// 记录开始时间，用于精确计时
 				this.recordingStartTime = Date.now();
 				
-				// 检查录音权限
-				uni.authorize({
-					scope: 'scope.record',
-					success: () => {
-						// 权限授权成功后再开始计时
-						this.recordingTimer = setInterval(() => {
-							// 使用精确的时间计算
-							const elapsedTime = Math.floor((Date.now() - this.recordingStartTime) / 1000);
-							this.recordingTime = elapsedTime;
-							
-							// 超过60秒自动停止
-							if (this.recordingTime >= 60) {
-								this.stopRecording();
-								uni.showToast({
-									title: '录音已达最大时长',
-									icon: 'none'
-								});
-							}
-						}, 1000);
-						
-						// 开始录音
-						const options = {
-							duration: 60000, // 最长录音时间，单位ms，最大可设置为60s
-							sampleRate: 16000, // 采样率
-							numberOfChannels: 1, // 录音通道数
-							encodeBitRate: 96000, // 编码码率
-							format: 'mp3', // 修改为mp3格式，兼容性更好
-							frameSize: 50 // 指定帧大小，单位KB
-						};
-						
-						console.log('开始录音...');
-						this.recorderManager.start(options);
-					},
-					fail: () => {
-						console.error('未授权录音权限');
-						this.recordingTipText = '需要录音权限';
-						setTimeout(() => {
-							this.showRecordingOverlay = false;
-							this.isRecording = false;
-							// 确保清除计时器
-							if (this.recordingTimer) {
-								clearInterval(this.recordingTimer);
-								this.recordingTimer = null;
-							}
-						}, 1500);
-						
-						uni.showModal({
-							title: '提示',
-							content: '需要您授权录音权限才能发送语音消息',
-							confirmText: '去授权',
-							success: (res) => {
-								if (res.confirm) {
-									uni.openSetting();
-								}
-							}
+				// 直接开始录音，如果权限不足会在onError中处理
+				const options = {
+					duration: 60000, // 最长录音时间，单位ms，最大可设置为60s
+					sampleRate: 16000, // 采样率
+					numberOfChannels: 1, // 录音通道数
+					encodeBitRate: 96000, // 编码码率
+					format: 'mp3', // 修改为mp3格式，兼容性更好
+					frameSize: 50 // 指定帧大小，单位KB
+				};
+				
+				console.log('开始录音...');
+				this.recorderManager.start(options);
+				
+				// 开始计时
+				this.recordingTimer = setInterval(() => {
+					// 使用精确的时间计算
+					const elapsedTime = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+					this.recordingTime = elapsedTime;
+					
+					// 超过60秒自动停止
+					if (this.recordingTime >= 60) {
+						this.stopRecording();
+						uni.showToast({
+							title: '录音已达最大时长',
+							icon: 'none'
 						});
 					}
-				});
+				}, 1000);
 			},
 			// 处理按钮触摸开始事件
 			handleTouchStart() {
-				if (!this.isRobotLoading) {
+				if (this.isRobotLoading) {
+					return;
+				}
+				
+				try {
 					this.startRecording();
+				} catch (error) {
+					console.error('开始录音失败:', error);
+					// 确保状态被清理
+					this.isRecording = false;
+					this.showRecordingOverlay = false;
+					uni.showToast({
+						title: '录音启动失败',
+						icon: 'none'
+					});
 				}
 			},
 			
 			// 处理按钮触摸结束事件
 			handleTouchEnd() {
 				if (this.isRecording) {
-					this.stopRecording();
+					try {
+						this.stopRecording();
+					} catch (error) {
+						console.error('停止录音失败:', error);
+						// 强制清理状态
+						this.forceStopRecording();
+					}
 				}
 			},
 			
 			// 处理按钮触摸取消事件
 			handleTouchCancel() {
 				if (this.isRecording) {
-					this.cancelRecording();
+					try {
+						this.cancelRecording();
+					} catch (error) {
+						console.error('取消录音失败:', error);
+						// 强制清理状态
+						this.forceStopRecording();
+					}
 				}
 			},
 			// 结束录音
@@ -1224,6 +1282,33 @@
 					this.$set(this.messages[this.currentPlayingIndex], 'isPlaying', false);
 				}
 				this.currentPlayingIndex = -1;
+			},
+			
+			// 强制停止录音
+			forceStopRecording() {
+				if (this.isRecording) {
+					console.log('强制停止录音');
+					
+					// 停止录音
+					try {
+						this.recorderManager.stop();
+					} catch (e) {
+						console.error('停止录音失败:', e);
+					}
+					
+					// 清理状态
+					this.isRecording = false;
+					this.showRecordingOverlay = false;
+					
+					// 清除计时器
+					if (this.recordingTimer) {
+						clearInterval(this.recordingTimer);
+						this.recordingTimer = null;
+					}
+					
+					// 重置录音时间
+					this.recordingTime = 0;
+				}
 			}
 		}
         
