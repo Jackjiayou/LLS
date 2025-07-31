@@ -352,6 +352,7 @@
 						method: 'POST',
 						data,
 						header,
+						timeout: 60000, // 60秒超时
 						success: res => {
 							if (res.data && res.data.success) resolve(res.data.data);
 							else reject(res);
@@ -367,6 +368,7 @@
 						method: 'POST',
 						data,
 						header,
+						timeout: 60000, // 60秒超时
 						success: res => {
 							if (res.data && res.data.success) resolve(res.data.data);
 							else reject(res);
@@ -382,6 +384,7 @@
 						method: 'POST',
 						data,
 						header,
+						timeout: 240000, // 240秒超时，因为这个接口处理音频分析比较耗时
 						success: res => {
 							if (res.data && res.data.success) resolve(res.data.data);
 							else reject(res);
@@ -401,6 +404,7 @@
 					url: this.apiBaseUrl + `/api/report/get-report/${practiceId}`,
 					method: 'GET',
 					header,
+					timeout: 30000, // 30秒超时
 					success: (res) => {
 						if (res.data && res.data.success) {
 							// 从数据库获取到报告数据
@@ -488,7 +492,7 @@
 			generateNewReport(practiceId) {
 				// 原来的重新生成报告逻辑
 				this.loading = true;
-				uni.showLoading({ title: '音频合并中...' });
+				uni.showLoading({ title: '音频合并中...', mask: true });
 				
 				const token = uni.getStorageSync('token');
 				const header = {
@@ -502,6 +506,7 @@
 					method: 'POST',
 					data: { practice_id: practiceId, conversationId: this.conversationId },
 					header,
+					timeout: 60000, // 60秒超时
 					success: (res) => {
 						if (res.data && res.data.success) {
 							// 合并成功，拿到 file_path
@@ -509,7 +514,7 @@
 							uni.hideLoading();
 							
 							// 2. 并发调用两个分析接口
-							uni.showLoading({ title: '分析中...' });
+							uni.showLoading({ title: '分析中，请稍候...', mask: true });
 							Promise.all([
 								this.fetchOrganization('/api/report/analyze-organization', { practice_id: practiceId, conversationId: this.conversationId, output_path: filePath }, header),
 								this.fetchPersuasiveness('/api/report/analyze-persuasiveness', { practice_id: practiceId, conversationId: this.conversationId, output_path: filePath }, header),
@@ -550,7 +555,8 @@
 									}
 								});
 							}).catch(err => {
-								uni.showToast({ title: '获取报告失败', icon: 'none' });
+								console.error('分析失败:', err);
+								uni.showToast({ title: '分析失败，请重试', icon: 'none', duration: 3000 });
 							}).finally(() => {
 								this.loading = false;
 								uni.hideLoading();
@@ -561,8 +567,9 @@
 							uni.hideLoading();
 						}
 					},
-					fail: () => {
-						uni.showToast({ title: '音频合并失败', icon: 'none' });
+					fail: (err) => {
+						console.error('音频合并失败:', err);
+						uni.showToast({ title: '音频合并失败，请重试', icon: 'none', duration: 3000 });
 						this.loading = false;
 						uni.hideLoading();
 					}
@@ -657,6 +664,7 @@
 					method: 'POST',
 					data: { practice_id: practiceId },
 					header,
+					timeout: 30000, // 30秒超时
 					success: (res) => {
 						if (res.data && res.data.success) {
 							// 处理对话记录数据

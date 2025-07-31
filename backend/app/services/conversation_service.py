@@ -211,7 +211,8 @@ class ConversationService:
                         analysis = match2.group(2).strip()
                         return score, analysis
                     # 3. 兜底
-                    print("大模型返回格式无法解析:", str_reslt)
+                        print("大模型返回格式无法解析:", str_reslt)
+                    print("大模型返回格式错误:",str_reslt)
                     return 0, "大模型返回格式错误"
 
 
