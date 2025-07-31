@@ -178,6 +178,7 @@
 				// 语音条宽度配置
 				minVoiceWidth: 120, // 最小宽度（rpx）
 				maxVoiceWidth: 400, // 最大宽度（rpx）
+				isManualScrolling: false, // 新增：标记是否为手动滚动
 			}
 		},
         onLoad(options) {
@@ -319,15 +320,27 @@
 			scrollToAnalysis(index) {
 				this.activeAnalysisIndex = index;
 				this.navScrollIntoView = 'nav-item-' + index;
+				
+				// 添加一个标志，防止滚动监听器立即覆盖选中的标签
+				this.isManualScrolling = true;
+				
 				this.$nextTick(() => {
 					uni.pageScrollTo({
 						selector: `#analysis-${index}`,
 						duration: 300,
-						offsetTop: 200  // 增加偏移量，让内容显示在更合适的位置
+						offsetTop: -70  // 负偏移量，让内容显示得更靠上
 					});
+					
+					// 滚动完成后重置标志
+					setTimeout(() => {
+						this.isManualScrolling = false;
+					}, 400); // 比滚动动画稍长一点
 				});
 			},
 			onPageScroll(e) {
+				// 如果是手动滚动，不更新活跃索引
+				if (this.isManualScrolling) return;
+				
 				// 监听页面滚动，更新当前活跃的指标
 				this.updateActiveAnalysisIndex(e.scrollTop);
 			},
@@ -336,23 +349,32 @@
 				const analysisItems = this.report.analysis;
 				if (!analysisItems || analysisItems.length === 0) return;
 				
-				// 计算每个分析项的位置（简化版本）
-				const analysisSectionTop = 500; // 分析区域的大概位置（调整）
-				const itemHeight = 200; // 每个分析项的大概高度
-				
-				for (let i = 0; i < analysisItems.length; i++) {
-					const itemTop = analysisSectionTop + (i * itemHeight);
-					const itemBottom = itemTop + itemHeight;
+				// 使用更精确的DOM元素位置计算
+				const query = uni.createSelectorQuery().in(this);
+				query.selectAll('.analysis-item').boundingClientRect((rects) => {
+					if (!rects || rects.length === 0) return;
 					
-					// 如果当前滚动位置在这个分析项的范围内
-					if (scrollTop >= itemTop - 150 && scrollTop < itemBottom) {  // 增加检测范围
-						if (this.activeAnalysisIndex !== i) {
-							this.activeAnalysisIndex = i;
-							this.navScrollIntoView = `nav-item-${i}`;
+					// 获取页面滚动位置
+					const pageScrollTop = scrollTop;
+					const offsetTop = -70; // 与scrollToAnalysis中的offsetTop保持一致
+					
+					// 找到当前在视口中的分析项
+					for (let i = 0; i < rects.length; i++) {
+						const rect = rects[i];
+						const itemTop = rect.top + pageScrollTop;
+						const itemBottom = itemTop + rect.height;
+						
+						// 判断当前滚动位置是否在这个分析项的范围内
+						// 考虑offsetTop的影响，让选中逻辑更准确
+						if (pageScrollTop + offsetTop >= itemTop && pageScrollTop + offsetTop < itemBottom) {
+							if (this.activeAnalysisIndex !== i) {
+								this.activeAnalysisIndex = i;
+								this.navScrollIntoView = `nav-item-${i}`;
+							}
+							break;
 						}
-						break;
 					}
-				}
+				}).exec();
 			},
 			fetchOrganization(url, data, header) {
 				return new Promise((resolve, reject) => {
