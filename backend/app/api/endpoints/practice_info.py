@@ -19,7 +19,7 @@ async def get_practice_stats(
 
             # 获取练习次数
             practice_count = db.query(func.count(PracticeRecord.practice_id)) \
-                .filter(PracticeRecord.user_id == user_id) \
+                .filter(PracticeRecord.user_id == user_id,PracticeRecord.is_deleted == 0) \
                 .scalar()
 
             # 获取练习时长（已完成练习的总时长，单位：分钟）
@@ -30,12 +30,13 @@ async def get_practice_stats(
             ).filter(
                 PracticeRecord.user_id == user_id,
                 PracticeRecord.status == 'completed',
-                PracticeRecord.ended_at.isnot(None)
+                PracticeRecord.ended_at.isnot(None),
+                PracticeRecord.is_deleted == 0
             ).scalar() or 0
 
             # 获取练习场景数（去重）
             scenario_count = db.query(func.count(func.distinct(PracticeRecord.scenario_id))) \
-                .filter(PracticeRecord.user_id == user_id) \
+                .filter(PracticeRecord.user_id == user_id,PracticeRecord.is_deleted == 0) \
                 .scalar()
 
             return {

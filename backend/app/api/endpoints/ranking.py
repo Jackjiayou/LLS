@@ -17,7 +17,7 @@ router = APIRouter()
 async def get_ranking_list(
     time_period: str = Query("today", description="时间周期: today, week, month, all"),
     scenario_id: str = Query("all", description="场景ID: all 或具体场景ID"),
-    sort_by: str = Query("score", description="排序方式: score, duration"),
+    sort_by: str = Query("avg_score", description="排序方式: avg_score, max_score, total_score, duration"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -72,28 +72,37 @@ async def get_ranking_list(
             
             # 如果练习已完成且有分数，算作完成的场景
             if record.status == 'completed':
-                # 检查是否有分数（从任何分数字段）
+                # 检查是否有分数（从新的分数字段）
                 has_score = False
-                if record.score_json:
+                
+                # 检查组织能力分数
+                if record.organization_score:
                     try:
-                        score_data = record.score_json
-                        if isinstance(score_data, dict) and score_data.get('total_score', 0) > 0:
-                            has_score = True
-                        elif isinstance(score_data, (int, float)) and score_data > 0:
+                        if isinstance(record.organization_score, dict) and record.organization_score.get('score', 0) > 0:
                             has_score = True
                     except:
                         pass
                 
-                # 检查其他分数字段
-                if not has_score:
-                    for score_field in [record.organization_score, record.persuasiveness_score, record.fluency_pronunciation_expression_score]:
-                        if score_field:
-                            try:
-                                if isinstance(score_field, dict) and score_field.get('score', 0) > 0:
-                                    has_score = True
-                                    break
-                            except:
-                                pass
+                # 检查说服力分数
+                if not has_score and record.persuasiveness_score:
+                    try:
+                        if isinstance(record.persuasiveness_score, dict) and record.persuasiveness_score.get('score', 0) > 0:
+                            has_score = True
+                    except:
+                        pass
+                
+                # 检查流利度、发音、表达分数
+                if not has_score and record.fluency_pronunciation_expression_score:
+                    try:
+                        if isinstance(record.fluency_pronunciation_expression_score, dict):
+                            fluency_score = record.fluency_pronunciation_expression_score.get('fluency', {}).get('score', 0)
+                            pronunciation_score = record.fluency_pronunciation_expression_score.get('pronunciation', {}).get('score', 0)
+                            expression_score = record.fluency_pronunciation_expression_score.get('expression', {}).get('score', 0)
+                            
+                            if fluency_score > 0 or pronunciation_score > 0 or expression_score > 0:
+                                has_score = True
+                    except:
+                        pass
                 
                 if has_score:
                     user_stats[user_id]['completed_scenarios'].add(record.scenario_id)
@@ -103,37 +112,57 @@ async def get_ranking_list(
                 duration = (record.ended_at - record.started_at).total_seconds() / 3600
                 user_stats[user_id]['total_duration'] += duration
             
-            # 计算分数
-            score = 0
-            if record.score_json:
-                try:
-                    score_data = record.score_json
-                    if isinstance(score_data, dict):
-                        score = score_data.get('total_score', 0)
-                    elif isinstance(score_data, (int, float)):
-                        score = score_data
-                except:
-                    pass
-            
-            # 如果没有分数，尝试从其他字段计算
-            if score == 0:
+            # 只有完成的练习才计算分数
+            if record.status == 'completed':
                 total_score = 0
                 count = 0
                 
-                for score_field in [record.organization_score, record.persuasiveness_score, record.fluency_pronunciation_expression_score]:
-                    if score_field:
-                        try:
-                            if isinstance(score_field, dict):
-                                total_score += score_field.get('score', 0)
+                # 组织能力分数
+                if record.organization_score:
+                    try:
+                        if isinstance(record.organization_score, dict):
+                            org_score = record.organization_score.get('score', 0)
+                            if org_score > 0:
+                                total_score += org_score
                                 count += 1
-                        except:
-                            pass
+                    except:
+                        pass
                 
+                # 说服力分数
+                if record.persuasiveness_score:
+                    try:
+                        if isinstance(record.persuasiveness_score, dict):
+                            per_score = record.persuasiveness_score.get('score', 0)
+                            if per_score > 0:
+                                total_score += per_score
+                                count += 1
+                    except:
+                        pass
+                
+                # 流利度、发音、表达分数
+                if record.fluency_pronunciation_expression_score:
+                    try:
+                        if isinstance(record.fluency_pronunciation_expression_score, dict):
+                            fluency_score = record.fluency_pronunciation_expression_score.get('fluency', {}).get('score', 0)
+                            pronunciation_score = record.fluency_pronunciation_expression_score.get('pronunciation', {}).get('score', 0)
+                            expression_score = record.fluency_pronunciation_expression_score.get('expression', {}).get('score', 0)
+                            
+                            if fluency_score > 0:
+                                total_score += fluency_score
+                                count += 1
+                            if pronunciation_score > 0:
+                                total_score += pronunciation_score
+                                count += 1
+                            if expression_score > 0:
+                                total_score += expression_score
+                                count += 1
+                    except:
+                        pass
+                
+                # 计算平均分数
                 if count > 0:
-                    score = total_score / count
-            
-            if score > 0:
-                user_stats[user_id]['scores'].append(score)
+                    avg_score = total_score / count
+                    user_stats[user_id]['scores'].append(avg_score)
         
         # 计算每个用户的平均分数
         user_rankings = []
@@ -145,14 +174,27 @@ async def get_ranking_list(
                 'practice_count': stats['practice_count'],
                 'total_duration': stats['total_duration'],
                 'scenario_count': len(stats['completed_scenarios']),  # 使用完成的场景数量
-                'avg_score': avg_score
+                'avg_score': avg_score,
+                'scores': stats['scores']  # 添加scores字段用于排序
             })
         
         # 根据排序方式排序
         if sort_by == "duration":
             user_rankings.sort(key=lambda x: x['total_duration'], reverse=True)
             score_field = 'total_duration'
-        else:  # score
+        elif sort_by == "max_score":
+            # 按最高分排序
+            for item in user_rankings:
+                item['max_score'] = max(item['scores']) if item['scores'] else 0
+            user_rankings.sort(key=lambda x: x['max_score'], reverse=True)
+            score_field = 'max_score'
+        elif sort_by == "total_score":
+            # 按总分排序
+            for item in user_rankings:
+                item['total_score'] = sum(item['scores']) if item['scores'] else 0
+            user_rankings.sort(key=lambda x: x['total_score'], reverse=True)
+            score_field = 'total_score'
+        else:  # avg_score (默认)
             user_rankings.sort(key=lambda x: x['avg_score'], reverse=True)
             score_field = 'avg_score'
         
