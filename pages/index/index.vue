@@ -260,9 +260,8 @@
 			},
 			goToRanking() {
 				// 跳转到排行榜页面
-				uni.showToast({
-					title: '排行榜功能开发中',
-					icon: 'none'
+				uni.navigateTo({
+					url: '/pages/ranking/ranking'
 				});
 			},
 			goToRecords() {
