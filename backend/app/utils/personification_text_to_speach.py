@@ -17,6 +17,9 @@ import os
 import  logging
 import  traceback
 from app.core.logger import logger
+import asyncio
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Ws_Param(object):
@@ -185,18 +188,20 @@ def on_open(ws):
     thread.start_new_thread(run, ())
 
 
-def text_to_speech(text,appid,apisecret,apikey,save_folder):
-    # 从控制台页面获取以下密钥信息，控制台地址：https://console.xfyun.cn/app/myapp
+# 创建线程池执行器，用于处理同步的WebSocket调用
+# 线程池大小可以根据服务器配置调整
+import os
+TTS_MAX_WORKERS = int(os.getenv('TTS_MAX_WORKERS', '50'))  # 默认10个线程
+_executor = ThreadPoolExecutor(max_workers=TTS_MAX_WORKERS, thread_name_prefix="tts_worker")
+
+
+def _text_to_speech_sync(text, appid, apisecret, apikey, save_folder):
+    """同步版本的text_to_speech，在线程池中执行"""
     try:
         import uuid
         appid = '945b4712'
         apisecret = 'ZWI2YzcyODhiZTQwNzQ4YjkxNjQzZTgx'
         apikey = 'ea534a9e6e9cd16ca30764ccf18901e9'
-
-        # now = datetime.now()
-        # timestamp = int(now.timestamp())
-        # file_path = f"{save_folder}\\{timestamp}.mp3"
-        # file_name = f"{timestamp}.mp3"
 
         unique_id = str(uuid.uuid4())
         timestamp = int(datetime.now().timestamp())
@@ -222,6 +227,44 @@ def text_to_speech(text,appid,apisecret,apikey,save_folder):
         logger.error(traceback.format_exc())
         raise
 
+
+async def text_to_speech(text, appid, apisecret, apikey, save_folder):
+    """
+    异步版本的text_to_speech，避免阻塞FastAPI主线程
+    """
+    try:
+        # 检查线程池状态
+        if _executor._work_queue.qsize() > TTS_MAX_WORKERS * 2:
+            logger.warning(f"TTS线程池队列过长: {_executor._work_queue.qsize()}")
+        
+        # 在线程池中执行同步的WebSocket操作
+        loop = asyncio.get_event_loop()
+        file_name = await loop.run_in_executor(
+            _executor, 
+            _text_to_speech_sync, 
+            text, appid, apisecret, apikey, save_folder
+        )
+        return file_name
+    except Exception as e:
+        logger.error(f"异步text_to_speech失败: {str(e)}")
+        traceback.print_exc()
+        raise
+
+
+def get_tts_pool_status():
+    """获取TTS线程池状态"""
+    return {
+        "max_workers": TTS_MAX_WORKERS,
+        "active_threads": len(_executor._threads),
+        "queue_size": _executor._work_queue.qsize(),
+        "completed_tasks": _executor._work_queue.qsize()  # 简化版本
+    }
+
+
+# 保持向后兼容的同步版本
+def text_to_speech_sync(text, appid, apisecret, apikey, save_folder):
+    """同步版本的text_to_speech，用于向后兼容"""
+    return _text_to_speech_sync(text, appid, apisecret, apikey, save_folder)
 
 
 if __name__ == "__main__":

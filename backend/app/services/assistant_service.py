@@ -73,7 +73,7 @@ class AssistantService:
         }
 
 
-    def get_robot_message(self,  message_count: int, messages: Optional[str] = None, user_id: Optional[str] = None, conversation_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_robot_message(self,  message_count: int, messages: Optional[str] = None, user_id: Optional[str] = None, conversation_id: Optional[str] = None) -> Dict[str, Any]:
         """获取机器人消息"""
         try:
             # 解析历史消息
@@ -92,16 +92,16 @@ class AssistantService:
 
             # 如果是第一条消息（初始问候）
             if message_count == 0:
-                return self._handle_initial_message(0, paths)
+                return await self._handle_initial_message(0, paths)
             else:
-                return self._handle_followup_message(history_messages, paths)
+                return await self._handle_followup_message(history_messages, paths)
 
         except Exception as e:
             traceback.print_exc()
             logger.error(f"获取机器人消息失败: {str(e)}")
             raise
 
-    def _handle_initial_message(self, scene_id: int, paths: Dict[str, str]) -> Dict[str, Any]:
+    async def _handle_initial_message(self, scene_id: int, paths: Dict[str, str]) -> Dict[str, Any]:
         """处理初始问候消息"""
         scene_questions = scene.questions.get(scene_id, [])
         if not scene_questions:
@@ -110,7 +110,7 @@ class AssistantService:
         question = random.choice(scene_questions)
         text = question["text"]
 
-        file_name = text_to_speech(
+        file_name = await text_to_speech(
             text=text,
             appid=settings.XUNFEI_APP_ID,
             apisecret=settings.XUNFEI_API_SECRET,
@@ -129,7 +129,7 @@ class AssistantService:
             "voiceUrl": file_path_url
         }
 
-    def _handle_followup_message(self, history_messages: List[Dict[str, Any]], paths: Dict[str, str]) -> Dict[str, Any]:
+    async def _handle_followup_message(self, history_messages: List[Dict[str, Any]], paths: Dict[str, str]) -> Dict[str, Any]:
         """处理后续消息"""
         if not history_messages:
             raise ValueError("No history messages provided")
@@ -141,7 +141,7 @@ class AssistantService:
         chat_msg = getds.get_messages_ai(json.dumps(history_messages))
         robot_words = getds.get_response_qwen(chat_msg)
 
-        file_name = text_to_speech(
+        file_name = await text_to_speech(
             text=robot_words,
             appid=settings.XUNFEI_APP_ID,
             apisecret=settings.XUNFEI_API_SECRET,
@@ -205,7 +205,7 @@ class AssistantService:
             traceback.print_exc()
             raise Exception(f"上传文件处理失败: {str(e)}")
 
-    def process_text_message(self, text: str, scene_id: int, user_id: str, conversation_id: str, history_messages: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    async def process_text_message(self, text: str, scene_id: int, user_id: str, conversation_id: str, history_messages: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """处理用户发送的文本消息"""
         try:
             # 获取用户路径
@@ -223,7 +223,7 @@ class AssistantService:
             robot_words = getds.get_response_qwen(chat_msg)
             
             # 生成语音文件
-            file_name = text_to_speech(
+            file_name = await text_to_speech(
                 text=robot_words,
                 appid=settings.XUNFEI_APP_ID,
                 apisecret=settings.XUNFEI_API_SECRET,

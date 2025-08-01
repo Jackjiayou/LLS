@@ -47,7 +47,7 @@ async def get_robot_response(
         if userId and str(token["sub"]) != userId:
             raise HTTPException(status_code=403, detail="Unauthorized access")
 
-        result = conversation_service.get_robot_message(
+        result = await conversation_service.get_robot_message(
             messageCount,
             messages,
             userId,
@@ -119,7 +119,7 @@ async def send_text_message(
             raise HTTPException(status_code=403, detail="Unauthorized access")
 
         # 调用服务处理文本消息
-        result = assistant_service.process_text_message(
+        result = await assistant_service.process_text_message(
             text,
             scene_id,
             user_id,
