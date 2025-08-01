@@ -162,7 +162,7 @@
 							}, 3000)
 						} else {
 							uni.showToast({
-								title: '登录失败：' + (response.data?.detail || '未知错误'),
+								title: '登录失败：' + (typeof response.data?.detail === 'string' ? response.data.detail : '未知错误'),
 								icon: 'none'
 							})
 						}
@@ -200,7 +200,7 @@
 						}, 1500)
 					} else {
 						uni.showToast({
-							title: '登录失败：' + (error.message || '未知错误'),
+							title: '登录失败：' + (typeof error.message === 'string' ? error.message : '未知错误'),
 							icon: 'none'
 						})
 					}
