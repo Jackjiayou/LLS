@@ -2,7 +2,6 @@
 	<view class="main-bg">
 		<!-- 顶部栏 -->
 		<view class="top-bar">
-			<text class="title">培训</text>
 			<view class="top-icons">
 				<uni-icons type="settings" size="24" color="#333" />
 				<uni-icons type="more-filled" size="24" color="#333" style="margin-left: 16rpx;" />

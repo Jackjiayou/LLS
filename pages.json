@@ -9,25 +9,28 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "首页"
+				"navigationBarTitleText": "培训"
 			}
 		},
 		{
 			"path": "pages/scene/scene",
 			"style": {
-				"navigationBarTitleText": "场景详情"
+				"navigationBarTitleText": "场景详情",
+				"navigationBarFontWeight": "bold"
 			}
 		},
         {
         	"path": "pages/chat/chat",
         	"style": {
-        		"navigationBarTitleText": "练习聊天"
+        		"navigationBarTitleText": "练习聊天",
+        		"navigationBarFontWeight": "bold"
         	}
         },
         {
         	"path": "pages/report/report",
         	"style": {
-        		"navigationBarTitleText": "练习报告"
+        		"navigationBarTitleText": "练习报告",
+        		"navigationBarFontWeight": "bold"
         	}
         },
         {
@@ -58,7 +61,8 @@
 		{
 			"path": "pages/create-digital-human-advanced/create-digital-human-advanced",
 			"style": {
-				"navigationBarTitleText": "制作数字人"
+				"navigationBarTitleText": "制作数字人",
+				"navigationBarFontWeight": "bold"
 			}
 		},
 		{
@@ -120,6 +124,7 @@
 			"path": "pages/practice-history/practice-history",
 			"style": {
 				"navigationBarTitleText": "练习历史",
+				"navigationBarFontWeight": "bold",
 				"enablePullDownRefresh": true
 			}
 		},
@@ -132,7 +137,8 @@
 		{
 			"path": "pages/ranking/ranking",
 			"style": {
-				"navigationBarTitleText": "排行榜"
+				"navigationBarTitleText": "排行榜",
+				"navigationBarFontWeight": "bold"
 			}
 		}
 	],
@@ -140,6 +146,7 @@
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "培训",
 		"navigationBarBackgroundColor": "#F8F8F8",
+		"navigationBarFontWeight": "bold",
         
 		"backgroundColor": "#F8F8F8"
 	},

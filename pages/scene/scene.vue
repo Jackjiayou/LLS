@@ -2,7 +2,6 @@
 	<view class="container">
 		<view class="scene-header">
 			<image class="scene-image" :src="scene.icon"></image>
-			<text class="scene-title">{{scene.name}}</text>
 		</view>
 		
 		<view class="scene-content">
@@ -61,6 +60,14 @@
 				this.getSceneDetail();
 			}
 		},
+		onShow() {
+			// 动态设置导航栏标题
+			if (this.scene.name) {
+				uni.setNavigationBarTitle({
+					title: this.scene.name
+				});
+			}
+		},
 		methods: {
 			getSceneDetail() {
 				// 从服务器获取场景详情
@@ -106,6 +113,10 @@
 				const foundScene = scenes.find(item => item.id === this.sceneId);
 				if (foundScene) {
 					this.scene = foundScene;
+					// 设置导航栏标题
+					uni.setNavigationBarTitle({
+						title: this.scene.name
+					});
 				} else {
 					uni.showToast({
 						title: '场景不存在',
@@ -166,10 +177,7 @@
 		margin-bottom: 20rpx;
 	}
 	
-	.scene-title {
-		font-size: 40rpx;
-		font-weight: bold;
-	}
+
 	
 	.scene-content {
 		flex: 1;

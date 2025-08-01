@@ -23,7 +23,6 @@
 		<!-- 报告内容 -->
 		<view v-if="activeTab === 'report'" class="report-content">
 			<view class="report-header">
-				<text class="report-title">练习报告</text>
 				<text class="scene-name">{{sceneName}}</text>
 			</view>
 			
@@ -86,7 +85,6 @@
 		<!-- 对话记录内容 -->
 		<view v-if="activeTab === 'dialogue'" class="dialogue-content">
 			<view class="dialogue-header">
-				<text class="dialogue-title">对话记录</text>
 				<text class="scene-name">{{sceneName}}</text>
 			</view>
 			
@@ -198,6 +196,11 @@
 			
 			// 获取场景名称
 			this.getSceneName();
+			
+			// 设置导航栏标题
+			uni.setNavigationBarTitle({
+				title: '练习报告'
+			});
 			
 			// 根据来源决定是获取已有报告还是重新生成
 			if (this.fromChat || this.generateNew) {
@@ -931,12 +934,7 @@
 		position: relative;
 	}
 	
-	.report-title {
-		font-size: 40rpx;
-		font-weight: bold;
-		margin-bottom: 10rpx;
-		display: block;
-	}
+
 	
 	.scene-name {
 		font-size: 28rpx;
@@ -1176,12 +1174,7 @@
 		margin-bottom: 20rpx;
 	}
 
-	.dialogue-title {
-		font-size: 36rpx;
-		font-weight: bold;
-		color: #333;
-		margin-bottom: 10rpx;
-	}
+
 
 	.chat-messages {
 		height: 100%; /* 确保scroll-view高度为内容区域 */

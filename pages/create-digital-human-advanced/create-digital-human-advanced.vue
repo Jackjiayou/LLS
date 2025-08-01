@@ -25,14 +25,7 @@
         </view>
       </view>
     </view>
-    <!-- 顶部标题栏 -->
-    <view class="header">
-      <view class="header-left" @click="goBack">
-        <uni-icons type="left" size="24" color="#fff"></uni-icons>
-      </view>
-      <text class="title">制作数字人</text>
-      <view class="header-right"></view>
-    </view>
+
     <!-- 主要内容区域 -->
     <view class="content">
       <!-- 说明文字 -->
@@ -84,7 +77,7 @@
         <!-- 数字人视频列表 -->
         <view class="function-item" @click="goToSynthesizeList">
           <view class="function-icon">
-            <uni-icons type="gear" size="32" color="#1AAD19"></uni-icons>
+            <uni-icons type="list" size="32" color="#1AAD19"></uni-icons>
           </view>
           <view class="function-content">
             <text class="function-title">数字人视频列表</text>
@@ -110,14 +103,11 @@ export default {
     };
   },
   methods: {
-      goToSynthesizeList() {
-          console.log(uni.getStorageSync('token'))
-      	uni.navigateTo({
-      		url: '/pages/synthesize-list/synthesize-list'
-      	});
-      },
-    goBack() {
-      uni.navigateBack();
+          goToSynthesizeList() {
+        console.log(uni.getStorageSync('token'))
+    	uni.navigateTo({
+    		url: '/pages/synthesize-list/synthesize-list'
+    	});
     },
     goToCloneHuman() {
       uni.navigateTo({
@@ -203,30 +193,7 @@ export default {
   background: #007aff;
   color: #fff;
 }
-/* ... existing code ... */
-.header {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  padding: 40rpx 30rpx 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.header-left {
-  width: 60rpx;
-  height: 60rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.title {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #fff;
-}
-.header-right {
-  width: 60rpx;
-}
+
 .content {
   padding: 40rpx 30rpx;
 }

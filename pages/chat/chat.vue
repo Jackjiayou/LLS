@@ -2,7 +2,6 @@
 	<view class="container">
 		<!-- 头部信息 -->
 		<view class="chat-header">
-			<text class="scene-name">{{sceneName}}</text>
 			<button class="end-btn" @click="endPractice">结束 </button>
 		</view>
 		
@@ -175,6 +174,11 @@
 					}, 2000);
 					return;
 				}
+				
+				// 设置导航栏标题
+				uni.setNavigationBarTitle({
+					title: '练习聊天'
+				});
 				
                 console.log('创建对话onload')
 				// 每次进入页面时生成新的会话ID
@@ -1319,10 +1323,7 @@
 		border-bottom: 1rpx solid #eee;
 	}
 	
-	.scene-name {
-		font-size: 32rpx;
-		font-weight: bold;
-	}
+
 	
 	.end-btn {
 		font-size: 28rpx;
