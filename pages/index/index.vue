@@ -38,6 +38,10 @@
 				<image class="func-icon" :src="`${apiBaseUrl}/uploads/static/record.png`"></image>
 				<text class="func-label">练习记录</text>
 			</view>
+			<view v-if="userInfo.is_admin" class="func-item" @click="goToWhitelist">
+				<image class="func-icon" :src="`${apiBaseUrl}/uploads/static/user-avatar.png`"></image>
+				<text class="func-label">白名单管理</text>
+			</view>
 <!--            <view class="func-item" @click="goToDigitalHuman">
                 <image class="func-icon" :src="`${apiBaseUrl}/uploads/static/digital-human.png`"></image>
                 <text class="func-label">珍迪助手</text>
@@ -73,6 +77,7 @@
 				userInfo: {
 					avatar: '',
 					name: '未登录',
+					is_admin: false
 				},
 				scenes: [
                     {
@@ -231,7 +236,8 @@
 						console.log('User info fetched successfully:', res.data);
 						this.userInfo = {
 							avatar: res.data.avatar_url || this.apiBaseUrl + '/uploads/static/user-avatar.png',
-							name: res.data.nickname || '未设置昵称'
+							name: res.data.nickname || '未设置昵称',
+							is_admin: res.data.is_admin || false // 添加 is_admin 字段
 						};
 					} else {
 						console.error('Failed to fetch user info:', res);
@@ -267,6 +273,12 @@
 				// 跳转到练习记录页面
 				uni.navigateTo({
 					url: '/pages/practice-history/practice-history'
+				});
+			},
+			goToWhitelist() {
+				// 跳转到白名单管理页面
+				uni.navigateTo({
+					url: '/pages/admin/whitelist'
 				});
 			}
 		}

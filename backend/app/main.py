@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.endpoints import  auth, conversation,practice_info,assistant,digital_human,report,ranking
+from app.api.endpoints import auth, conversation, practice_info, assistant, digital_human, report, ranking, whitelist, admin, temp_auth
 from app.db.database import engine, Base
 from app.models import digital_human as digital_human_models
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +19,9 @@ app.include_router(assistant.router, prefix="/agent", tags=["agent"])
 app.include_router(digital_human.router, prefix="/api/digital-human", tags=["digital-human"])
 app.include_router(report.router, prefix="/api/report", tags=["report"])
 app.include_router(ranking.router, prefix="/api", tags=["ranking"])
+app.include_router(whitelist.router, prefix="/api", tags=["whitelist"])
+app.include_router(admin.router, prefix="/api", tags=["admin"])
+app.include_router(temp_auth.router, prefix="/auth", tags=["temp_auth"])
 # os.makedirs(settings.file_path_voice, exist_ok=True)
 # os.makedirs(settings.file_path_tts, exist_ok=True)
 

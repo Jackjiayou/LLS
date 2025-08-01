@@ -69,6 +69,9 @@ const request = (options) => {
                     }, 2000)
                     
                     reject(new Error('登录已过期'))
+                } else if (res.statusCode === 403) {
+                    // 权限不足，直接返回403响应，让前端处理
+                    resolve(res)
                 } else {
                     resolve(res)
                 }

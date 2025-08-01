@@ -140,6 +140,34 @@
 				"navigationBarTitleText": "排行榜",
 				"navigationBarFontWeight": "bold"
 			}
+		},
+		{
+			"path": "pages/admin/whitelist",
+			"style": {
+				"navigationBarTitleText": "白名单管理",
+				"navigationBarFontWeight": "bold"
+			}
+		},
+		{
+			"path": "pages/user-info/user-info",
+			"style": {
+				"navigationBarTitleText": "用户信息",
+				"navigationBarFontWeight": "bold"
+			}
+		},
+		{
+			"path": "pages/temp-login/temp-login",
+			"style": {
+				"navigationBarTitleText": "临时登录",
+				"navigationBarFontWeight": "bold"
+			}
+		},
+		{
+			"path": "pages/admin/simple-whitelist",
+			"style": {
+				"navigationBarTitleText": "简单白名单管理",
+				"navigationBarFontWeight": "bold"
+			}
 		}
 	],
 	"globalStyle": {

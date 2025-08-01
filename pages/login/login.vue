@@ -112,19 +112,98 @@
 								duration: 2000
 							});
 						}
+					} else if (response.statusCode === 403) {
+						// 403权限问题，跳转到临时登录页面
+						uni.showToast({
+							title: '您不在授权用户列表中，正在跳转...',
+							icon: 'none',
+							duration: 1500
+						})
+						setTimeout(() => {
+							uni.navigateTo({
+								url: '/pages/temp-login/temp-login',
+								fail: () => {
+									uni.redirectTo({ url: '/pages/temp-login/temp-login' })
+								}
+							})
+						}, 1500)
+					} else if (response.statusCode === 500 && response.data?.detail?.includes('您不在授权用户列表中')) {
+						// 500错误但包含权限不足信息，跳转到临时登录页面
+						uni.showToast({
+							title: '您不在授权用户列表中，正在跳转...',
+							icon: 'none',
+							duration: 1500
+						})
+						setTimeout(() => {
+							uni.navigateTo({
+								url: '/pages/temp-login/temp-login',
+								fail: () => {
+									uni.redirectTo({ url: '/pages/temp-login/temp-login' })
+								}
+							})
+						}, 1500)
 					} else {
 						console.error('登录失败：', response)
-						uni.showToast({
-							title: '登录失败：' + (response.data?.detail || '未知错误'),
-							icon: 'none'
-						})
+						
+						// 检查是否是权限问题
+						if (response.statusCode === 403) {
+							// 显示权限提示并跳转到临时登录页面
+							uni.showToast({
+								title: '您不在授权用户列表中',
+								icon: 'none',
+								duration: 3000
+							})
+							
+							// 延迟3秒后跳转到临时登录页面
+							setTimeout(() => {
+								uni.navigateTo({
+									url: '/pages/temp-login/temp-login'
+								})
+							}, 3000)
+						} else {
+							uni.showToast({
+								title: '登录失败：' + (response.data?.detail || '未知错误'),
+								icon: 'none'
+							})
+						}
 					}
 				} catch (error) {
 					console.error('登录过程出错：', error)
-					uni.showToast({
-						title: '登录失败：' + (error.message || '未知错误'),
-						icon: 'none'
-					})
+					// 兜底处理
+					if (error?.statusCode === 403) {
+						uni.showToast({
+							title: '您不在授权用户列表中，正在跳转...',
+							icon: 'none',
+							duration: 1500
+						})
+						setTimeout(() => {
+							uni.navigateTo({
+								url: '/pages/temp-login/temp-login',
+								fail: () => {
+									uni.redirectTo({ url: '/pages/temp-login/temp-login' })
+								}
+							})
+						}, 1500)
+					} else if (error?.statusCode === 500 && error?.data?.detail?.includes('您不在授权用户列表中')) {
+						uni.showToast({
+							title: '您不在授权用户列表中，正在跳转...',
+							icon: 'none',
+							duration: 1500
+						})
+						setTimeout(() => {
+							uni.navigateTo({
+								url: '/pages/temp-login/temp-login',
+								fail: () => {
+									uni.redirectTo({ url: '/pages/temp-login/temp-login' })
+								}
+							})
+						}, 1500)
+					} else {
+						uni.showToast({
+							title: '登录失败：' + (error.message || '未知错误'),
+							icon: 'none'
+						})
+					}
 				}
 			}
 		}

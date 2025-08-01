@@ -68,6 +68,21 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         openid = result["openid"]
         session_key = result["session_key"]
         
+        # 检查用户是否在白名单中
+        from app.models.user import Whitelist
+        whitelist_user = db.query(Whitelist).filter(
+            Whitelist.openid == openid,
+            Whitelist.is_active == True
+        ).first()
+        
+        if not whitelist_user:
+            error_msg = f"您不在授权用户列表中，请联系管理员。您的openid是：{openid}"
+            log_error({"error": error_msg, "openid": openid})
+            raise HTTPException(
+                status_code=403,
+                detail=error_msg
+            )
+        
         # 查找或创建用户
         user = db.query(User).filter(User.openid == openid).first()
         if not user:
@@ -98,6 +113,10 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             expires_delta=access_token_expires
         )
         
+        # 记录用户openid（用于白名单管理）
+        logger.info(f"用户登录成功 - ID: {user.id}, openid: {openid}, nickname: {user.nickname}")
+        
+
         response_data = {
             "access_token": access_token,
             "token_type": "bearer",
@@ -163,8 +182,12 @@ async def get_user_info(token: str = Depends(get_current_user), db: Session = De
         raise HTTPException(status_code=404, detail="User not found")
     
     return {
+        "id": user.id,
+        "openid": user.openid,
         "nickname": user.nickname,
-        "avatar_url": user.avatar_url
+        "avatar_url": user.avatar_url,
+        "is_admin": user.is_admin,
+        "created_at": user.created_at
     }
 
 @router.post("/update-user-info")
