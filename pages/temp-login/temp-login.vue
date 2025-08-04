@@ -3,12 +3,12 @@
 		
 		<view class="info-card">
 			<text class="info-text">您不在授权用户列表中，此页面用于临时登录获取您的OpenID。</text>
-			<text class="info-text">获取OpenID后，请联系管理员将您添加到白名单中。或者直接点击申请授权等待管理员授权</text>
+			<text class="info-text">点击下方按钮授权并登录，获取OpenID后可以申请加入白名单。</text>
 		</view>
 		
 		<view class="login-section" v-if="!loginResult">
 			<button @click="tempLogin" class="login-btn" :disabled="isLoading">
-				{{ isLoading ? '临时登录中...' : '下一步' }}
+				{{ isLoading ? '临时登录中...' : '授权并登录' }}
 			</button>
 		</view>
 		
@@ -106,6 +106,38 @@
 				this.isLoading = true
 				
 				try {
+					// 先获取用户信息
+					let userInfo = {
+						nickname: '',
+						avatar_url: ''
+					}
+					
+					try {
+						const userProfileRes = await uni.getUserProfile({
+							desc: '用于完善用户资料'
+						})
+						console.log('获取用户信息成功：', userProfileRes)
+						userInfo = {
+							nickname: userProfileRes.userInfo.nickName,
+							avatar_url: userProfileRes.userInfo.avatarUrl
+						}
+					} catch (error) {
+						console.log('获取用户信息失败，使用默认值:', error)
+						// 如果获取失败，尝试使用其他方式
+						try {
+							const userInfoRes = await uni.getUserInfo({
+								success: (res) => {
+									userInfo = {
+										nickname: res.userInfo.nickName || '',
+										avatar_url: res.userInfo.avatarUrl || ''
+									}
+								}
+							})
+						} catch (err) {
+							console.log('getUserInfo也失败了:', err)
+						}
+					}
+					
 					// 获取微信登录code
 					const loginRes = await uni.login({
 						provider: 'weixin'
@@ -118,8 +150,8 @@
 							method: 'POST',
 							data: {
 								code: loginRes.code,
-								nickname: '',
-								avatar_url: ''
+								nickname: userInfo.nickname,
+								avatar_url: userInfo.avatar_url
 							},
 							header: {
 								'Content-Type': 'application/json'
@@ -130,7 +162,7 @@
 							this.loginResult = {
 								openid: res.data.openid,
 								user_id: res.data.user_id,
-								nickname: res.data.nickname || ''
+								nickname: res.data.nickname || userInfo.nickname || ''
 							}
 							
 							// 获取申请状态

@@ -83,6 +83,7 @@ async def temp_login(login_data: LoginRequest, db: Session = Depends(get_db)):
             "expires_at": expires_at,
             "user_id": str(user.id),
             "openid": openid,  # 直接返回openid
+            "nickname": user.nickname,  # 返回用户昵称
             "message": "临时登录成功，请复制openid后添加到白名单"
         }
         
