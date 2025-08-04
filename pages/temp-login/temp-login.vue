@@ -35,7 +35,7 @@
 				<view class="auth-card">
 					<text class="auth-title">申请授权</text>
 					<text class="auth-desc">您可以直接申请加入白名单，管理员会审核您的申请。</text>
-					<text class="auth-desc">如果您有授权码，请在申请理由中输入授权码即可自动通过。</text>
+					<text class="auth-desc">如果您有授权码，请在申请理由中输入授权码即可自动通过并直接登录。</text>
 					
 					<view class="input-group">
 						<input 
@@ -235,12 +235,27 @@
 					})
 					
 					if (res.statusCode === 200) {
-						uni.showToast({
-							title: '申请提交成功',
-							icon: 'success'
-						})
-						this.authRequest.reason = ''
-						this.checkAuthStatus()
+						// 检查是否是授权码自动批准
+						if (res.data.status === 'approved' && res.data.processed_by === 'system') {
+							// 授权码自动批准，直接登录
+							uni.showToast({
+								title: '授权码验证成功，正在登录...',
+								icon: 'success'
+							})
+							
+							// 延迟一下让用户看到提示
+							setTimeout(async () => {
+								await this.autoLogin()
+							}, 1500)
+						} else {
+							// 普通申请，等待管理员审核
+							uni.showToast({
+								title: '申请提交成功',
+								icon: 'success'
+							})
+							this.authRequest.reason = ''
+							this.checkAuthStatus()
+						}
 					} else {
 						uni.showToast({
 							title: typeof res.data.detail === 'string' ? res.data.detail : '申请提交失败',
@@ -255,6 +270,103 @@
 					})
 				} finally {
 					this.isSubmitting = false
+				}
+			},
+			
+			// 自动登录
+			async autoLogin() {
+				try {
+					// 获取微信登录code
+					const loginRes = await uni.login({
+						provider: 'weixin'
+					})
+					
+					if (loginRes.code) {
+						// 获取用户信息
+						let userInfo = {
+							nickname: this.loginResult.nickname || '',
+							avatar_url: ''
+						}
+						
+						try {
+							const userProfileRes = await uni.getUserProfile({
+								desc: '用于完善用户资料'
+							})
+							userInfo = {
+								nickname: userProfileRes.userInfo.nickName,
+								avatar_url: userProfileRes.userInfo.avatarUrl
+							}
+						} catch (error) {
+							console.log('获取用户信息失败，使用已有信息:', error)
+						}
+						
+						// 调用正式登录API
+						const res = await uni.request({
+							url: `${this.apiBaseUrl}/auth/login`,
+							method: 'POST',
+							data: {
+								code: loginRes.code,
+								nickname: userInfo.nickname,
+								avatar_url: userInfo.avatar_url
+							},
+							header: {
+								'Content-Type': 'application/json'
+							}
+						})
+						
+						if (res.statusCode === 200 && res.data) {
+							// 保存token
+							uni.setStorageSync('token', res.data.access_token)
+							// 保存token过期时间
+							const expiresIn = res.data.expires_in || 7200
+							const expireTime = Date.now() + expiresIn * 1000
+							uni.setStorageSync('token_expire_time', expireTime)
+							
+							// 保存用户信息到本地
+							uni.setStorageSync('userInfo', {
+								userId: res.data.user_id,
+								nickname: userInfo.nickname,
+								avatarUrl: userInfo.avatar_url
+							})
+							
+							uni.showToast({
+								title: '登录成功',
+								icon: 'success'
+							})
+							
+							// 跳转到首页
+							setTimeout(() => {
+								uni.reLaunch({
+									url: '/pages/index/index',
+									success: () => {
+										console.log('跳转到首页成功')
+									},
+									fail: (err) => {
+										console.error('跳转失败:', err)
+										uni.redirectTo({
+											url: '/pages/index/index'
+										})
+									}
+								})
+							}, 1000)
+						} else {
+							uni.showToast({
+								title: '自动登录失败',
+								icon: 'none'
+							})
+						}
+					} else {
+						uni.showToast({
+							title: '获取登录码失败',
+							icon: 'none'
+						})
+					}
+				} catch (error) {
+					console.error('Auto login error:', error)
+					uni.showToast({
+						title: '自动登录失败',
+						icon: 'none'
+					})
 				}
 			},
 			
