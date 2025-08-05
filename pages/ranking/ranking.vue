@@ -35,7 +35,7 @@
 					<text class="user-desc">已练习场景{{currentUserRank.scenario_count}}个</text>
 				</view>
 				<view class="user-score">
-					<text class="score-text">{{currentUserRank.score}}分</text>
+					<text class="score-text">{{formatDuration(currentUserRank.score)}}{{getScoreUnit()}}</text>
 				</view>
 			</view>
 		</view>
@@ -51,7 +51,7 @@
 						<text class="user-desc">已练习场景{{item.scenario_count}}个</text>
 					</view>
 					<view class="user-score">
-						<text class="score-text">{{item.score}}分</text>
+						<text class="score-text">{{formatDuration(item.score)}}{{getScoreUnit()}}</text>
 					</view>
 				</view>
 			</view>
@@ -183,6 +183,34 @@
 				this.selectedSort = selected.label;
 				this.currentSortValue = selected.value;
 				this.loadRankingData();
+			},
+
+			// 根据排序方式获取分数单位
+			getScoreUnit() {
+				if (this.currentSortValue === 'avg_score') {
+					return '分';
+				} else if (this.currentSortValue === 'max_score') {
+					return '分';
+				} else if (this.currentSortValue === 'total_score') {
+					return '分';
+				} else if (this.currentSortValue === 'duration') {
+					return '';
+				}
+				return '';
+			},
+			
+			// 格式化时长显示
+			formatDuration(seconds) {
+				if (this.currentSortValue === 'duration') {
+					const minutes = Math.floor(seconds / 60);
+					const remainingSeconds = seconds % 60;
+					if (minutes > 0) {
+						return `${minutes}分${remainingSeconds}秒`;
+					} else {
+						return `${remainingSeconds}秒`;
+					}
+				}
+				return seconds;
 			}
 		}
 	}
