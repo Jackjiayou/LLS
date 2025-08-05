@@ -6,7 +6,7 @@ import  traceback
 from datetime import datetime
 
 DP_URL = 'https://api.deepseek.com/v1'
-DP_KEY ='sk-083524dfc0b747d69bfcf3fd5b19c9ca'
+DP_KEY ='sk-b9ed97f5dbfa42d7ab55ef89925f0fd5'
 
 def get_messages_rag( history):
     retry = 1
@@ -91,7 +91,43 @@ def get_messages( history,rag_msg):
     return messages
 
 import  json
-def get_messages_ai( history):
+
+
+def get_messages_ai(history):
+    system_message = {
+        'role': 'system',
+        'content': '''你是一位对核苷酸产品感兴趣的潜在顾客，正在与珍奥双迪公司的销售员进行对话咨询。
+
+        【你的身份】：你是一位真实的顾客，不是AI助手，不是销售员。你正在考虑购买核苷酸产品，所以会问各种关于产品的问题。
+        
+        【你的行为模式】：
+        1. 始终以顾客身份提问和回应，绝不以销售员身份说话
+        2. 对产品信息有好奇心，会追问具体细节
+        3. 对销售员的回答会有质疑和追问，这是正常顾客的反应
+        4. 如果销售员回答不专业或模糊，你会直接指出问题
+        5. 如果销售员询问你的信息，你会适当回答（如年龄、健康状况等）
+        
+        【对话原则】：
+        - 只回复顾客应该说的话，不回复销售员的话
+        - 保持对话的自然性和连贯性
+        - 用中文回复，语气自然贴近生活
+        - 不要承认自己是AI或程序
+        
+        【注意事项】：
+        - 当销售员询问产品信息时，你仍然是顾客，不要替销售员回答
+        - 如果销售员说"您觉得怎么样"，你应该表达顾客的看法
+        - 如果销售员问"您还有什么问题"，你应该提出顾客的疑问'''
+    }
+
+    data1 = json.loads(history)
+    messages = [system_message]
+    for history_item in data1:
+        messages.append(
+            {'role': 'assistant' if history_item['from'] == 'customer' else 'user', 'content': history_item['text']})
+
+    return messages
+
+def get_messages_ai_old( history):
     # 构建系统消息（包含角色定义和规则） 下面是一段顾客（customer）和用户(user)的聊天记录，顾客提问，用户回答，聊天记录中，
     system_message = {
         'role': 'system',
@@ -144,19 +180,30 @@ def get_response_qwen(user_input):
     while retry <= 1:
         try:
 
-            client = OpenAI(
-                # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
-                api_key='sk-08a1b5a3baf746128b2af77836c2ffd9',
-                # 如何获取API Key：https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key
-                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-            )
+            # client = OpenAI(
+            #     # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+            #     api_key='sk-08a1b5a3baf746128b2af77836c2ffd9',
+            #     # 如何获取API Key：https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key
+            #     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            # )
+            #
+            # completion = client.chat.completions.create(
+            #     model="qwen-plus",  # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            #     messages=user_input,
+            #     temperature=0.0
+            # )
+            # content_return = completion.choices[0].message.content
+            # return content_return
 
-            completion = client.chat.completions.create(
-                model="qwen-plus",  # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            client = OpenAI(api_key=DP_KEY, base_url="https://api.deepseek.com")
+            response = client.chat.completions.create(
+                model="deepseek-chat",
                 messages=user_input,
+                stream=False,
                 temperature=0.0
             )
-            content_return = completion.choices[0].message.content
+            content_return = response.choices[0].message.content
+            # ---------------------------------------------------------------
             return content_return
 
         except Exception as e:
