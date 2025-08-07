@@ -927,7 +927,7 @@ def evaluate_pronunciation(pronunciation_score):
     elif pronunciation_score < 90:
         return f"发音准确度得分为{pronunciation_score}，发音较为标准，偶有小瑕疵，建议继续保持并进一步提升发音细节。"
     else:
-        return f"发音准确度得分为{pronunciation_score}，发音非常标准清晰，几乎无可挑剔，表现优秀！"
+        return f"发音准确度得分为{pronunciation_score}，发音标准清晰，表现优秀！"
 
 # 新增依赖注入工厂
 def get_conversation_service():

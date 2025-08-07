@@ -1,0 +1,15 @@
+[Unit]
+Description=FastAPI App via Gunicorn
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/www/wwwroot/backend
+ExecStart=/root/anaconda/home/anaconda/envs/test3/bin/gunicorn app.main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --workers 4
+Restart=always
+Environment="PATH=/root/anaconda/home/anaconda/envs/test3/bin"
+Environment="PYTHONPATH=/www/wwwroot/backend"
+
+[Install]
+WantedBy=multi-user.target
