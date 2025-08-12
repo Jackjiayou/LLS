@@ -5,4 +5,31 @@ psycopg2-binary
 PyJWT
 python-multipart
 requests
-pydantic-settings 
+pydantic-settings
+gunicorn
+
+# AI/ML相关
+openai
+langchain
+langchain-community
+langchain-core
+sentence-transformers
+torch
+faiss-cpu
+
+# 文档处理
+unstructured
+PyPDF2
+python-docx
+
+# 音频处理
+pydub
+librosa
+
+# 其他工具
+python-dotenv
+bitstring==3.1.9
+chardet==4.0.0
+jsonpath_rw
+tabulate==0.8.9
+websocket_client==1.3.2
