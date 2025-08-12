@@ -1,10 +1,10 @@
 <template>
 	<view class="whitelist-container">
 		<!-- 顶部标题 -->
-		<view class="header">
+<!-- 		<view class="header">
 			<text class="title">白名单管理</text>
 		</view>
-		
+		 -->
 		<!-- 授权码区域 -->
 		<view class="auth-codes-section">
 			<view class="auth-codes-card">
