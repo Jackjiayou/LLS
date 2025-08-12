@@ -3,7 +3,7 @@
 		<view class="logo">
 			<image src="/static/logo.png" mode="aspectFit"></image>
 		</view>
-		<view class="title">欢迎使用</view>
+		<view class="title">欢迎使用，本系统仅限本公司用户使用</view>
 		<view class="subtitle">请授权登录以继续使用</view>
 		<button class="login-btn" @click="handleLogin">微信一键登录</button>
 	</view>
