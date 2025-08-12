@@ -44,7 +44,13 @@
 							class="reason-input"
 						/>
 					</view>
-					
+					<view class="input-group">
+						<input 
+							v-model="authRequest.nickname" 
+							placeholder="请输入用户名" 
+							class="reason-input"
+						/>
+					</view>
 					<button @click="submitAuthRequest" class="auth-btn" :disabled="isSubmitting">
 						{{ isSubmitting ? '提交中...' : '申请授权' }}
 					</button>
@@ -226,7 +232,7 @@
 						method: 'POST',
 						data: {
 							openid: this.loginResult.openid,
-							nickname: this.loginResult.nickname,
+							nickname: this.authRequest.nickname,
 							reason: this.authRequest.reason.trim()
 						},
 						header: {
