@@ -144,6 +144,15 @@ def get_messages_ai_old( history):
 
     return messages
 
+def get_messages_report_an( info):
+    system_message = {
+        'role': 'system',
+        'content':f'{info}'
+    }
+
+
+    return system_message
+
 def get_messages_analyze(history, rag_msg, sence):
     # 构建系统消息（包含角色定义和规则）
     content = f'''{sence}，根据下面聊天记录中顾客（assistant）与珍奥双迪的销售员（user）的对话，主要是在介绍核苷酸的场景中，根据历史对话给出改进建议和示例。
